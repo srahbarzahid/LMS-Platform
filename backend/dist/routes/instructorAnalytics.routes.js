@@ -1,0 +1,21 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const instructorAnalytics_controller_1 = require("../controllers/instructorAnalytics.controller");
+const router = (0, express_1.Router)();
+// Example auth middleware usage if needed:
+// import { authenticate, authorize } from '../middlewares/auth';
+// router.use(authenticate);
+// router.use(authorize(['INSTRUCTOR', 'ADMIN']));
+router.get('/overview', instructorAnalytics_controller_1.getOverview);
+router.get('/students', instructorAnalytics_controller_1.getStudents);
+router.get('/revenue', instructorAnalytics_controller_1.getRevenue);
+router.get('/courses', instructorAnalytics_controller_1.getCourses);
+router.get('/learning', instructorAnalytics_controller_1.getLearning);
+router.get('/assessments', instructorAnalytics_controller_1.getAssessments);
+router.get('/ratings', instructorAnalytics_controller_1.getRatings);
+router.get('/certificates', instructorAnalytics_controller_1.getCertificates);
+router.get('/activities', instructorAnalytics_controller_1.getActivities);
+router.get('/tasks', instructorAnalytics_controller_1.getTasks);
+router.get('/reports', instructorAnalytics_controller_1.getReports);
+exports.default = router;

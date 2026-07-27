@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #ff6b00;
+  --color-secondary: #e56000;
+  --color-accent: #fff4ed;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #06B6D4;
+  
+  --color-background: #FFFFFF;
+  --color-footer-bg: #f0f4f8;
+  --color-card: #FFFFFF;
+  --color-sidebar: #FFFFFF;
+  --color-border: #f3f4f6;
+  --color-heading: #111827;
+  --color-body: #4B5563;
+  --color-caption: #9CA3AF;
+  
+  --font-heading: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-input: 10px;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-body);
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--color-heading);
+    font-family: var(--font-heading);
+  }
+
+  button, a, [role="button"], select {
+    cursor: pointer;
+  }
+
+  .dark {
+    --color-background: #000000;
+    --color-footer-bg: #0a0a0a;
+    --color-card: #111111;
+    --color-sidebar: #0a0a0a;
+    --color-border: #262626;
+    --color-heading: #ffffff;
+    --color-body: #a3a3a3;
+    --color-caption: #737373;
+    --color-accent: #111111;
+  }
+
+  /* Global Overrides for Hardcoded Light Theme Classes */
+  /* Base backgrounds */
+  .dark .bg-\[\#f8f9fa\],
+  .dark .bg-\[\#f0f4f8\],
+  .dark .bg-\[\#f9fafb\],
+  .dark .bg-gray-50,
+  .dark .bg-slate-50 {
+    background-color: var(--color-background) !important;
+  }
+
+  .dark .bg-white,
+  .dark .bg-\[\#FFFFFF\] {
+    background-color: var(--color-card) !important;
+  }
+
+  /* Allow specific hover backgrounds to win over the base backgrounds above */
+  .dark .hover\:bg-primary:hover {
+    background-color: var(--color-primary) !important;
+  }
+
+  /* Fix hardcoded light hovers */
+  .dark .hover\:bg-gray-50:hover,
+  .dark .hover\:bg-gray-100:hover,
+  .dark .hover\:bg-slate-50:hover,
+  .dark .hover\:bg-\[\#f8f9fa\]:hover,
+  .dark .hover\:bg-\[\#f0f4f8\]:hover {
+    background-color: var(--color-border) !important;
+  }
+
+  .dark .hover\:bg-red-50:hover {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+  }
+
+  .dark .text-\[\#111827\],
+  .dark .text-gray-900,
+  .dark .text-gray-800 {
+    color: var(--color-heading) !important;
+  }
+
+  .dark .text-\[\#4B5563\],
+  .dark .text-gray-600,
+  .dark .text-gray-700 {
+    color: var(--color-body) !important;
+  }
+
+  .dark .border-\[\#f3f4f6\],
+  .dark .border-\[\#e5e7eb\],
+  .dark .border-gray-100,
+  .dark .border-gray-200 {
+    border-color: var(--color-border) !important;
+  }
+
+  /* Specific fixes for pending reviews colored backgrounds */
+  .dark .bg-orange-50 { background-color: rgba(255, 107, 0, 0.1) !important; }
+  .dark .border-orange-100 { border-color: rgba(255, 107, 0, 0.2) !important; }
+  .dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.1) !important; }
+  .dark .border-blue-100 { border-color: rgba(59, 130, 246, 0.2) !important; }
+  .dark .bg-green-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
+  .dark .border-green-100 { border-color: rgba(16, 185, 129, 0.2) !important; }
+  .dark .bg-purple-50 { background-color: rgba(139, 92, 246, 0.1) !important; }
+  .dark .border-purple-100 { border-color: rgba(139, 92, 246, 0.2) !important; }
+
+  /* Scrollbar Styling for Dark Mode */
+  .dark ::-webkit-scrollbar,
+  .dark .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .dark ::-webkit-scrollbar-track,
+  .dark .custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--color-background);
+  }
+  .dark ::-webkit-scrollbar-thumb,
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #333333;
+    border-radius: 4px;
+  }
+  .dark ::-webkit-scrollbar-thumb:hover,
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #555555;
+  }
+}
+
+.gradient-primary {
+  background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
+}
+
+.gradient-secondary {
+  background: linear-gradient(to right, var(--color-primary), var(--color-info));
+}
+
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+  body {
+    margin: 0;
+  }
+}
