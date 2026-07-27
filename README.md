@@ -179,9 +179,3 @@ npm run dev
 - **Role-Based Access Control (RBAC)**: Enforced via Express middleware (`STUDENT`, `INSTRUCTOR`, `ADMIN`).
 - **Security Sessions**: Real-time session monitoring tracking device, IP address, and location.
 - **Certificate Authenticity**: Dynamic verification tokens & QR code checks accessible publicly via `/verify-certificate`.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License.
