@@ -1,5 +1,9 @@
 # ⚙️ LMS Platform Backend
 
+> [!IMPORTANT]
+> 🚧 **Under Construction / Active Development** 🚧  
+> The backend services and database models are currently under active development. Endpoints and schemas may evolve as new features are added.
+
 The RESTful API service powering the **LMS Platform**, built with **Node.js**, **Express 5**, **TypeScript**, **Prisma ORM**, and **PostgreSQL**.
 
 ---

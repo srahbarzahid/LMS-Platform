@@ -1,6 +1,25 @@
 # 🎓 LMS Platform - Modern Learning Management System
 
+> [!IMPORTANT]
+> 🚧 **Work in Progress / Under Active Development** 🚧  
+> This project is currently under construction and active development. Features, user interface components, backend services, and database schemas are continuously evolving.
+
 A full-stack, feature-rich **Learning Management System (LMS)** built with **React 19**, **Vite**, **TypeScript**, **Node.js**, **Express**, **Prisma ORM**, and **PostgreSQL**.
+
+---
+
+## 🚧 Project Status & Development Roadmap
+
+- 🛠️ **Status**: In Active Development (Pre-Release)
+- 🔄 **Ongoing Tasks**:
+  - [x] Core Authentication & Role-Based Access Control (Student, Instructor, Admin)
+  - [x] Course & Module Content Architecture
+  - [x] Interactive Quiz Player & Assignment Submissions
+  - [x] Automated PDF Certificate Generation & QR Verification
+  - [ ] Advanced Analytics & Performance Dashboard Refinements
+  - [ ] Real-time Socket / Push Notifications Integration
+  - [ ] Payment Gateway Integration Polish (Razorpay Sandbox/Production)
+  - [ ] Mobile Responsiveness & UI/UX Enhancements
 
 ---
 
