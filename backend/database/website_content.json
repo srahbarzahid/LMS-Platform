@@ -1,0 +1,108 @@
+{
+  "hero": {
+    "badgeText": "Save Time On Your Studies",
+    "headlineLine1": "Learn New Skills.",
+    "headlineLine2": "Achieve Your Dreams.",
+    "headline": "Learn New Skills.\nAchieve Your Dreams.",
+    "subtitle": "Explore thousands of online courses from expert instructors. Level up your skills, discover new hobbies, and take your career to the next level.",
+    "ctaText": "View Courses",
+    "ctaLink": "/courses"
+  },
+  "popularCategories": {
+    "sectionTitle": "Our Popular Categories",
+    "sectionSubtitle": "Explore courses across various high-demand industries.",
+    "items": [
+      {
+        "id": "1",
+        "name": "Development",
+        "count": "120+ Courses",
+        "icon": "Code",
+        "slug": "development"
+      },
+      {
+        "id": "2",
+        "name": "Design",
+        "count": "80+ Courses",
+        "icon": "Palette",
+        "slug": "design"
+      },
+      {
+        "id": "3",
+        "name": "Business",
+        "count": "60+ Courses",
+        "icon": "Briefcase",
+        "slug": "business"
+      },
+      {
+        "id": "4",
+        "name": "Marketing",
+        "count": "40+ Courses",
+        "icon": "Megaphone",
+        "slug": "marketing"
+      }
+    ]
+  },
+  "successStories": {
+    "sectionTitle": "Success Stories",
+    "sectionSubtitle": "See how Pi Tech has helped thousands of students transform their careers.",
+    "testimonials": [
+      {
+        "id": "1",
+        "name": "Jessica Miller",
+        "role": "Frontend Developer",
+        "stars": 5,
+        "quote": "The curriculum is incredibly structured and easy to follow. I went from zero coding knowledge to landing my first junior dev job in just 6 months!",
+        "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150"
+      },
+      {
+        "id": "2",
+        "name": "David Thompson",
+        "role": "Marketing Manager",
+        "stars": 5,
+        "quote": "Being able to access the course content on my phone during my commute made a huge difference. High quality production and expert teachers.",
+        "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150"
+      },
+      {
+        "id": "3",
+        "name": "Elena Rodriguez",
+        "role": "UX Designer",
+        "stars": 5,
+        "quote": "The community forums are so active! Whenever I got stuck, either a mentor or a fellow student helped me out within hours. Highly recommended.",
+        "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150"
+      }
+    ]
+  },
+  "contactInfo": {
+    "email": "pibotsacademy@gmail.com",
+    "phone": "+91 91884 11223",
+    "timing": "Mon-Sat, 9am-6pm IST",
+    "office": "Pi BOTS Makerhub, Mampad, Kerala 676542, India"
+  },
+  "footer": {
+    "facebook": "https://facebook.com",
+    "twitter": "https://twitter.com",
+    "linkedin": "https://linkedin.com",
+    "instagram": "https://instagram.com",
+    "contactEmail": "pibotsacademy@gmail.com",
+    "contactPhone": "+91 91884 11223",
+    "address": "Pi BOTS Makerhub, Mampad, Kerala 676542, India",
+    "copyright": "© 2026 Pi Tech LMS Platform. All Rights Reserved."
+  },
+  "faqs": [
+    {
+      "id": "1",
+      "question": "How do I access my purchased courses?",
+      "answer": "Once you purchase a course, you can access it anytime from your Student Dashboard under the 'My Courses' section."
+    },
+    {
+      "id": "2",
+      "question": "Do I get a certificate upon completion?",
+      "answer": "Yes! All of our paid courses come with a verifiable digital certificate upon successful completion of the curriculum."
+    },
+    {
+      "id": "3",
+      "question": "What payment methods are accepted?",
+      "answer": "We accept all major credit cards, PayPal, and regional payment gateways depending on your location."
+    }
+  ]
+}

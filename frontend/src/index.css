@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary: #ff6b00;
   --color-secondary: #e56000;
@@ -58,11 +60,18 @@
   /* Base backgrounds */
   .dark .bg-\[\#f8f9fa\],
   .dark .bg-\[\#f0f4f8\],
-  .dark .bg-\[\#f9fafb\],
-  .dark .bg-gray-50,
-  .dark .bg-slate-50 {
+  .dark .bg-\[\#f9fafb\] {
     background-color: var(--color-background) !important;
   }
+
+  .dark .bg-gray-50,
+  .dark .bg-slate-50,
+  .dark .bg-gray-50\/50,
+  .dark .bg-slate-50\/50 {
+    background-color: #18181b !important;
+  }
+
+
 
   .dark .bg-white,
   .dark .bg-\[\#FFFFFF\] {

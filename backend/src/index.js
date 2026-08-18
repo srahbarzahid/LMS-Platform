@@ -1,0 +1,45 @@
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
+import authRoutes from "./routes/authRoutes.js";
+import courseRoutes from "./routes/courseRoutes.js";
+import projectRoutes from "./routes/projectRoutes.js";
+import certificateRoutes from "./routes/certificateRoutes.js";
+import studentRoutes from "./routes/student.routes.js";
+import instructorRoutes from "./routes/instructor.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+import adminSettingsRoutes from "./routes/adminSettings.routes.js";
+import studentSettingsRoutes from "./routes/studentSettings.routes.js";
+import instructorSettingsRoutes from "./routes/instructorSettings.routes.js";
+import publicRoutes from "./routes/public.routes.js";
+import path from "path";
+dotenv.config();
+import { prisma } from "./prisma.js";
+const app = express();
+const port = process.env.PORT || 5e3;
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(cookieParser());
+app.use("/api/auth", authRoutes);
+app.use("/api/courses", courseRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/certificates", certificateRoutes);
+app.use("/api/student/settings", studentSettingsRoutes);
+app.use("/api/student", studentRoutes);
+app.use("/api/instructor/settings", instructorSettingsRoutes);
+app.use("/api/instructor", instructorRoutes);
+app.use("/api/admin/settings", adminSettingsRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/public", publicRoutes);
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+export {
+  prisma
+};
