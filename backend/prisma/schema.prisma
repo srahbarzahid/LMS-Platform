@@ -48,6 +48,16 @@ model User {
   githubUrl     String?
   linkedinUrl   String?
   portfolioUrl  String?
+  pendingEmail  String?
+  pendingPhone  String?
+  isEmailVerified Boolean @default(true)
+  isPhoneVerified Boolean @default(false)
+  notificationPreferences Json @default("{}")
+  dateOfBirth   String?
+  gender        String?
+  designation   String?
+  isDeactivated Boolean   @default(false)
+  deactivatedAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -373,10 +383,25 @@ model SecuritySession {
   id           String   @id @default(uuid())
   userId       String
   device       String
+  browser      String?  @default("Chrome")
   location     String
   ipAddress    String
+  isCurrent    Boolean  @default(false)
   lastActiveAt DateTime @default(now())
   createdAt    DateTime @default(now())
 
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PlatformSettings {
+  id              String   @id @default("default")
+  lmsName         String   @default("LMS Platform")
+  logoUrl         String?
+  defaultLanguage String   @default("English")
+  defaultTheme    String   @default("System")
+  supportEmail    String   @default("support@lms.com")
+  supportPhone    String   @default("+1-800-555-0199")
+  sessionTimeout  Int      @default(60)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

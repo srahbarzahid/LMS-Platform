@@ -82,6 +82,7 @@ import AdminAnnouncements from './pages/admin/announcements/AdminAnnouncements';
 import AdminAnnouncementForm from './pages/admin/announcements/AdminAnnouncementForm';
 import AdminAnnouncementDetails from './pages/admin/announcements/AdminAnnouncementDetails';
 import AdminAnalytics from './pages/admin/analytics/AdminAnalytics';
+import AdminSettings from './pages/admin/settings/AdminSettings';
 
 import About from './pages/About';
 import Contact from './pages/Contact';
@@ -162,7 +163,7 @@ const AppContent = () => {
               <Route path="certificates/:certificateId" element={<InstructorCertificateDetails />} />
               <Route path="analytics" element={<InstructorAnalytics />} />
               <Route path="announcements" element={<InstructorAnnouncements />} />
-              <Route path="profile" element={<InstructorProfile />} />
+              <Route path="profile" element={<Navigate to="/instructor/settings?tab=profile" replace />} />
               <Route path="settings" element={<InstructorSettings />} />
               <Route path="projects" element={<InstructorProjects />} />
               <Route path="projects/create" element={<InstructorProjectCreate />} />
@@ -206,6 +207,8 @@ const AppContent = () => {
               <Route path="analytics" element={<AdminAnalytics />} />
               <Route path="certificate-templates" element={<AdminCertificateTemplates />} />
               <Route path="certificates" element={<AdminIssuedCertificates />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="profile" element={<Navigate to="/admin/settings?tab=profile" replace />} />
               
               <Route path="*" element={<div className="flex items-center justify-center h-full"><h1 className="text-2xl text-caption font-medium">Page under construction</h1></div>} />
             </Route>

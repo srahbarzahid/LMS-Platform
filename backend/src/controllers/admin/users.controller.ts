@@ -21,7 +21,7 @@ export const adminUsersController = {
 
   getStudentById: (req: Request, res: Response) => {
     try {
-      const student = adminUsersService.getStudentById(req.params.id);
+      const student = adminUsersService.getStudentById(req.params.id as string);
       if (student) res.json(student);
       else res.status(404).json({ message: 'Student not found' });
     } catch (error) {
@@ -47,7 +47,7 @@ export const adminUsersController = {
 
   getInstructorById: (req: Request, res: Response) => {
     try {
-      const instructor = adminUsersService.getInstructorById(req.params.id);
+      const instructor = adminUsersService.getInstructorById(req.params.id as string);
       if (instructor) res.json(instructor);
       else res.status(404).json({ message: 'Instructor not found' });
     } catch (error) {
@@ -83,7 +83,7 @@ export const adminUsersController = {
 
   getAdminById: (req: Request, res: Response) => {
     try {
-      const admin = adminUsersService.getAdminById(req.params.id);
+      const admin = adminUsersService.getAdminById(req.params.id as string);
       if (admin) res.json(admin);
       else res.status(404).json({ message: 'Admin not found' });
     } catch (error) {
@@ -93,11 +93,11 @@ export const adminUsersController = {
   
   // Generic Actions
   deleteUser: (req: Request, res: Response) => {
-    adminUsersService.deleteUser(req.params.id);
+    adminUsersService.deleteUser(req.params.id as string);
     res.json({ message: 'User deleted successfully' });
   },
   updateUserStatus: (req: Request, res: Response) => {
-    adminUsersService.updateUserStatus(req.params.id);
+    adminUsersService.updateUserStatus(req.params.id as string);
     res.json({ message: 'User status updated successfully' });
   },
   resetUserPassword: (req: Request, res: Response) => {

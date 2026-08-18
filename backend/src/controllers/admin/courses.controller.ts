@@ -248,7 +248,7 @@ export const adminCoursesController = {
         return;
       }
 
-      course.certificateTemplateId = templateId;
+      (course as any).certificateTemplateId = templateId;
       course.updatedDate = new Date().toISOString();
 
       course.activityLog.unshift({

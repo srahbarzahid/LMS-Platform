@@ -12,14 +12,16 @@ import certificateRoutes from './routes/certificateRoutes';
 import studentRoutes from './routes/student.routes';
 import instructorRoutes from './routes/instructor.routes';
 import adminRoutes from './routes/admin.routes';
+import adminSettingsRoutes from './routes/adminSettings.routes';
+import studentSettingsRoutes from './routes/studentSettings.routes';
+import instructorSettingsRoutes from './routes/instructorSettings.routes';
 import publicRoutes from './routes/public.routes';
 import path from 'path';
 
 dotenv.config();
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-export const prisma = new PrismaClient({ adapter });
+import { prisma } from './prisma';
+export { prisma };
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -33,8 +35,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/certificates', certificateRoutes);
+app.use('/api/student/settings', studentSettingsRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/instructor/settings', instructorSettingsRoutes);
 app.use('/api/instructor', instructorRoutes);
+app.use('/api/admin/settings', adminSettingsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/public', publicRoutes);
 

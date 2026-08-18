@@ -53,7 +53,7 @@ export const adminCategoriesController = {
   },
 
   getCategoryById: (req: Request, res: Response) => {
-    const category = adminCategoriesService.getCategoryById(req.params.id);
+    const category = adminCategoriesService.getCategoryById(req.params.id as string);
     if (!category) {
       return res.status(404).json({ error: 'Category not found' });
     }
@@ -71,7 +71,7 @@ export const adminCategoriesController = {
 
   updateCategory: (req: Request, res: Response) => {
     try {
-      const category = adminCategoriesService.updateCategory(req.params.id, req.body);
+      const category = adminCategoriesService.updateCategory(req.params.id as string, req.body);
       if (!category) {
         return res.status(404).json({ error: 'Category not found' });
       }
@@ -83,7 +83,7 @@ export const adminCategoriesController = {
 
   deleteCategory: (req: Request, res: Response) => {
     try {
-      adminCategoriesService.deleteCategory(req.params.id);
+      adminCategoriesService.deleteCategory(req.params.id as string);
       res.json({ message: 'Category deleted successfully' });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -92,7 +92,7 @@ export const adminCategoriesController = {
 
   toggleFeatured: (req: Request, res: Response) => {
     try {
-      const category = adminCategoriesService.toggleFeatured(req.params.id, req.body.featured);
+      const category = adminCategoriesService.toggleFeatured(req.params.id as string, req.body.featured);
       if (!category) {
         return res.status(404).json({ error: 'Category not found' });
       }

@@ -1,22 +1,23 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { User, Shield, Bell, Sliders, RefreshCw } from 'lucide-react';
+import { User, Shield, Bell, Sliders, Building2, RefreshCw } from 'lucide-react';
 
-const InstructorProfileTab = lazy(() => import('./settings/tabs/InstructorProfileTab'));
-const InstructorAccountSecurityTab = lazy(() => import('./settings/tabs/InstructorAccountSecurityTab'));
-const InstructorNotificationsTab = lazy(() => import('./settings/tabs/InstructorNotificationsTab'));
-const InstructorPreferencesTab = lazy(() => import('./settings/tabs/InstructorPreferencesTab'));
+const ProfileTab = lazy(() => import('./tabs/ProfileTab'));
+const AccountSecurityTab = lazy(() => import('./tabs/AccountSecurityTab'));
+const NotificationsTab = lazy(() => import('./tabs/NotificationsTab'));
+const PreferencesTab = lazy(() => import('./tabs/PreferencesTab'));
+const GeneralSettingsTab = lazy(() => import('./tabs/GeneralSettingsTab'));
 
-type TabKey = 'profile' | 'security' | 'notifications' | 'preferences';
+type TabKey = 'profile' | 'security' | 'notifications' | 'preferences' | 'general';
 
-const InstructorSettings: React.FC = () => {
+const AdminSettings: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') as TabKey) || 'profile';
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
 
   useEffect(() => {
     const tabParam = searchParams.get('tab') as TabKey;
-    if (tabParam && ['profile', 'security', 'notifications', 'preferences'].includes(tabParam)) {
+    if (tabParam && ['profile', 'security', 'notifications', 'preferences', 'general'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -27,26 +28,27 @@ const InstructorSettings: React.FC = () => {
   };
 
   const tabs: { key: TabKey; label: string; icon: React.ReactNode; description: string }[] = [
-    { key: 'profile', label: 'Profile', icon: <User className="w-5 h-5" />, description: 'Identity, designation & bio' },
+    { key: 'profile', label: 'Profile', icon: <User className="w-5 h-5" />, description: 'Personal details & photo' },
     { key: 'security', label: 'Account & Security', icon: <Shield className="w-5 h-5" />, description: 'Password & active sessions' },
-    { key: 'notifications', label: 'Notifications', icon: <Bell className="w-5 h-5" />, description: 'Email & student activity alerts' },
+    { key: 'notifications', label: 'Notifications', icon: <Bell className="w-5 h-5" />, description: 'Alerts & delivery channels' },
     { key: 'preferences', label: 'Preferences', icon: <Sliders className="w-5 h-5" />, description: 'Language & theme mode' },
+    { key: 'general', label: 'General Settings', icon: <Building2 className="w-5 h-5" />, description: 'Platform branding & defaults' },
   ];
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
-      {/* Page Header */}
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-heading font-bold text-heading">Instructor Settings</h1>
-        <p className="text-body mt-1">Manage your public instructor profile, account security, student activity alerts, and UI preferences.</p>
+        <h1 className="text-3xl font-heading font-bold text-heading">Admin Settings</h1>
+        <p className="text-body mt-1">Manage your account profile, security controls, system notifications, and platform settings.</p>
       </div>
 
-      {/* Main Container Card */}
-      <div className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[580px]">
+      {/* Settings Card */}
+      <div className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[600px]">
         {/* Left Side Tab Navigation */}
-        <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-gray-50/50 p-6 flex flex-row md:flex-col gap-2 overflow-x-auto shrink-0">
+        <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-border bg-gray-50/50 p-6 flex flex-row md:flex-col gap-2 overflow-x-auto shrink-0">
           <div className="hidden md:block text-[11px] font-semibold tracking-[1px] uppercase text-caption mb-2 px-3">
-            Settings Menu
+            Navigation
           </div>
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
@@ -70,7 +72,7 @@ const InstructorSettings: React.FC = () => {
           })}
         </div>
 
-        {/* Tab Content Area */}
+        {/* Tab Content Area with Lazy Loading Suspense */}
         <div className="flex-1 p-6 md:p-8 overflow-y-auto">
           <Suspense
             fallback={
@@ -79,10 +81,11 @@ const InstructorSettings: React.FC = () => {
               </div>
             }
           >
-            {activeTab === 'profile' && <InstructorProfileTab />}
-            {activeTab === 'security' && <InstructorAccountSecurityTab />}
-            {activeTab === 'notifications' && <InstructorNotificationsTab />}
-            {activeTab === 'preferences' && <InstructorPreferencesTab />}
+            {activeTab === 'profile' && <ProfileTab />}
+            {activeTab === 'security' && <AccountSecurityTab />}
+            {activeTab === 'notifications' && <NotificationsTab />}
+            {activeTab === 'preferences' && <PreferencesTab />}
+            {activeTab === 'general' && <GeneralSettingsTab />}
           </Suspense>
         </div>
       </div>
@@ -90,4 +93,4 @@ const InstructorSettings: React.FC = () => {
   );
 };
 
-export default InstructorSettings;
+export default AdminSettings;
