@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../../prisma.js";
+
 const getUserId = (req) => {
   return req.user?.userId || "default-admin-id";
 };
+
 const getProfile = async (req, res) => {
   const userId = getUserId(req);
   const defaultProfile = {
@@ -17,6 +19,7 @@ const getProfile = async (req, res) => {
     isEmailVerified: true,
     isPhoneVerified: true
   };
+
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -33,45 +36,54 @@ const getProfile = async (req, res) => {
         isPhoneVerified: true
       }
     });
+
     res.json({
       status: "success",
       data: user || defaultProfile
     });
   } catch (error) {
+    console.error("Error in getProfile:", error);
     res.json({
       status: "success",
       data: defaultProfile
     });
   }
 };
+
 const updateProfile = async (req, res) => {
   const userId = getUserId(req);
   const { name, email, phone, removePhoto } = req.body;
-  let profileImage = void 0;
+
+  let profileImage = undefined;
   if (req.file) {
     profileImage = `/uploads/${req.file.filename}`;
   } else if (removePhoto === "true" || removePhoto === true) {
     profileImage = null;
   }
+
   try {
     let user = await prisma.user.findUnique({ where: { id: userId } });
     const updateData = {};
-    if (name !== void 0) updateData.name = name.trim();
-    if (profileImage !== void 0) updateData.profileImage = profileImage;
-    if (email !== void 0 && user && email.trim() !== user.email) {
+    if (name !== undefined) updateData.name = name.trim();
+    if (profileImage !== undefined) updateData.profileImage = profileImage;
+
+    if (email !== undefined && user && email.trim() !== user.email) {
       updateData.pendingEmail = email.trim();
       updateData.isEmailVerified = false;
     }
-    if (phone !== void 0 && user && phone.trim() !== (user.phone || "")) {
+
+    if (phone !== undefined && user && phone.trim() !== (user.phone || "")) {
       updateData.pendingPhone = phone.trim();
       updateData.isPhoneVerified = false;
     }
+
     if (user) {
       user = await prisma.user.update({
         where: { id: userId },
         data: updateData
       });
     }
+
     res.json({
       status: "success",
       message: "Profile updated successfully.",
@@ -80,14 +92,15 @@ const updateProfile = async (req, res) => {
         name: name || user?.name || "Super Admin",
         email: user?.email || "admin@lms.com",
         phone: user?.phone || "+1 234 567 8900",
-        profileImage: profileImage !== void 0 ? profileImage : user?.profileImage || null,
+        profileImage: profileImage !== undefined ? profileImage : user?.profileImage || null,
         pendingEmail: updateData.pendingEmail || null,
         pendingPhone: updateData.pendingPhone || null,
-        isEmailVerified: updateData.isEmailVerified !== void 0 ? updateData.isEmailVerified : true,
-        isPhoneVerified: updateData.isPhoneVerified !== void 0 ? updateData.isPhoneVerified : true
+        isEmailVerified: updateData.isEmailVerified !== undefined ? updateData.isEmailVerified : true,
+        isPhoneVerified: updateData.isPhoneVerified !== undefined ? updateData.isPhoneVerified : true
       }
     });
   } catch (error) {
+    console.error("Error in updateProfile:", error);
     res.json({
       status: "success",
       message: "Profile updated successfully.",
@@ -105,9 +118,11 @@ const updateProfile = async (req, res) => {
     });
   }
 };
+
 const changePassword = async (req, res) => {
   const userId = getUserId(req);
   const { currentPassword, newPassword } = req.body;
+
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (user) {
@@ -127,12 +142,14 @@ const changePassword = async (req, res) => {
       message: "Password changed successfully."
     });
   } catch (error) {
+    console.error("Error in changePassword:", error);
     res.json({
       status: "success",
       message: "Password changed successfully."
     });
   }
 };
+
 const resendVerification = async (req, res) => {
   const { type } = req.body;
   const channel = type === "mobile" ? "mobile number" : "email address";
@@ -141,9 +158,11 @@ const resendVerification = async (req, res) => {
     message: `Verification link/code sent successfully to your pending ${channel}.`
   });
 };
+
 const confirmVerification = async (req, res) => {
   const userId = getUserId(req);
   const { type } = req.body;
+
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (user) {
@@ -160,12 +179,15 @@ const confirmVerification = async (req, res) => {
       }
     }
   } catch (error) {
+    console.error("Error in confirmVerification:", error);
   }
+
   res.json({
     status: "success",
     message: `${type === "mobile" ? "Mobile number" : "Email address"} verified and updated successfully.`
   });
 };
+
 const getSessions = async (req, res) => {
   const userId = getUserId(req);
   const fallbackSessions = [
@@ -177,8 +199,8 @@ const getSessions = async (req, res) => {
       location: "New York, USA",
       ipAddress: "192.168.1.45",
       isCurrent: true,
-      lastActiveAt: /* @__PURE__ */ new Date(),
-      createdAt: /* @__PURE__ */ new Date()
+      lastActiveAt: new Date(),
+      createdAt: new Date()
     },
     {
       id: "session-2",
@@ -189,9 +211,10 @@ const getSessions = async (req, res) => {
       ipAddress: "172.56.21.99",
       isCurrent: false,
       lastActiveAt: new Date(Date.now() - 3600 * 1e3 * 5),
-      createdAt: /* @__PURE__ */ new Date()
+      createdAt: new Date()
     }
   ];
+
   try {
     let sessions = await prisma.securitySession.findMany({
       where: { userId },
@@ -202,39 +225,49 @@ const getSessions = async (req, res) => {
       data: sessions.length > 0 ? sessions : fallbackSessions
     });
   } catch (error) {
+    console.error("Error in getSessions:", error);
     res.json({
       status: "success",
       data: fallbackSessions
     });
   }
 };
+
 const deleteSession = async (req, res) => {
   const userId = getUserId(req);
   const { id } = req.params;
+
   try {
     await prisma.securitySession.deleteMany({
       where: { id: String(id), userId: String(userId) }
     });
   } catch (error) {
+    console.error("Error in deleteSession:", error);
   }
+
   res.json({
     status: "success",
     message: "Session logged out successfully."
   });
 };
+
 const deleteAllOtherSessions = async (req, res) => {
   const userId = getUserId(req);
+
   try {
     await prisma.securitySession.deleteMany({
       where: { userId, isCurrent: false }
     });
   } catch (error) {
+    console.error("Error in deleteAllOtherSessions:", error);
   }
+
   res.json({
     status: "success",
     message: "All other active sessions logged out successfully."
   });
 };
+
 const getNotifications = async (req, res) => {
   const userId = getUserId(req);
   const defaultPreferences = {
@@ -247,6 +280,7 @@ const getNotifications = async (req, res) => {
       securityAlerts: true
     }
   };
+
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -255,28 +289,35 @@ const getNotifications = async (req, res) => {
     const prefs = user?.notificationPreferences && Object.keys(user.notificationPreferences).length > 0 ? user.notificationPreferences : defaultPreferences;
     res.json({ status: "success", data: prefs });
   } catch (error) {
+    console.error("Error in getNotifications:", error);
     res.json({ status: "success", data: defaultPreferences });
   }
 };
+
 const updateNotifications = async (req, res) => {
   const userId = getUserId(req);
   const { notificationPreferences } = req.body;
+
   try {
     await prisma.user.update({
       where: { id: userId },
       data: { notificationPreferences }
     });
   } catch (error) {
+    console.error("Error in updateNotifications:", error);
   }
+
   res.json({
     status: "success",
     message: "Notification preferences saved successfully.",
     data: notificationPreferences
   });
 };
+
 const getPreferences = async (req, res) => {
   const userId = getUserId(req);
   const defaultPreferences = { preferredLanguage: "English", theme: "System" };
+
   try {
     const settings = await prisma.userSettings.findUnique({ where: { userId } });
     res.json({
@@ -284,12 +325,15 @@ const getPreferences = async (req, res) => {
       data: settings ? { preferredLanguage: settings.preferredLanguage, theme: settings.theme } : defaultPreferences
     });
   } catch (error) {
+    console.error("Error in getPreferences:", error);
     res.json({ status: "success", data: defaultPreferences });
   }
 };
+
 const updatePreferences = async (req, res) => {
   const userId = getUserId(req);
   const { preferredLanguage, theme } = req.body;
+
   try {
     const existing = await prisma.userSettings.findUnique({ where: { userId } });
     if (existing) {
@@ -306,13 +350,16 @@ const updatePreferences = async (req, res) => {
       });
     }
   } catch (error) {
+    console.error("Error in updatePreferences:", error);
   }
+
   res.json({
     status: "success",
     message: "Preferences updated successfully.",
     data: { preferredLanguage, theme }
   });
 };
+
 const getPlatformSettings = async (req, res) => {
   const defaultSettings = {
     id: "default",
@@ -324,29 +371,35 @@ const getPlatformSettings = async (req, res) => {
     supportPhone: "+1-800-555-0199",
     sessionTimeout: 60
   };
+
   try {
     const settings = await prisma.platformSettings.findUnique({ where: { id: "default" } });
     res.json({ status: "success", data: settings || defaultSettings });
   } catch (error) {
+    console.error("Error in getPlatformSettings:", error);
     res.json({ status: "success", data: defaultSettings });
   }
 };
+
 const updatePlatformSettings = async (req, res) => {
   const { lmsName, defaultLanguage, defaultTheme, supportEmail, supportPhone, sessionTimeout, removeLogo } = req.body;
-  let logoUrl = void 0;
+  let logoUrl = undefined;
+
   if (req.file) {
     logoUrl = `/uploads/${req.file.filename}`;
   } else if (removeLogo === "true" || removeLogo === true) {
     logoUrl = null;
   }
+
   const updateData = {};
-  if (lmsName !== void 0) updateData.lmsName = lmsName.trim();
-  if (defaultLanguage !== void 0) updateData.defaultLanguage = defaultLanguage;
-  if (defaultTheme !== void 0) updateData.defaultTheme = defaultTheme;
-  if (supportEmail !== void 0) updateData.supportEmail = supportEmail.trim();
-  if (supportPhone !== void 0) updateData.supportPhone = supportPhone.trim();
-  if (sessionTimeout !== void 0) updateData.sessionTimeout = Number(sessionTimeout);
-  if (logoUrl !== void 0) updateData.logoUrl = logoUrl;
+  if (lmsName !== undefined) updateData.lmsName = lmsName.trim();
+  if (defaultLanguage !== undefined) updateData.defaultLanguage = defaultLanguage;
+  if (defaultTheme !== undefined) updateData.defaultTheme = defaultTheme;
+  if (supportEmail !== undefined) updateData.supportEmail = supportEmail.trim();
+  if (supportPhone !== undefined) updateData.supportPhone = supportPhone.trim();
+  if (sessionTimeout !== undefined) updateData.sessionTimeout = Number(sessionTimeout);
+  if (logoUrl !== undefined) updateData.logoUrl = logoUrl;
+
   try {
     const settings = await prisma.platformSettings.upsert({
       where: { id: "default" },
@@ -364,6 +417,7 @@ const updatePlatformSettings = async (req, res) => {
     });
     res.json({ status: "success", message: "General platform settings updated successfully.", data: settings });
   } catch (error) {
+    console.error("Error in updatePlatformSettings:", error);
     res.json({
       status: "success",
       message: "General platform settings updated successfully.",
@@ -380,6 +434,7 @@ const updatePlatformSettings = async (req, res) => {
     });
   }
 };
+
 export {
   changePassword,
   confirmVerification,
@@ -396,3 +451,4 @@ export {
   updatePreferences,
   updateProfile
 };
+
