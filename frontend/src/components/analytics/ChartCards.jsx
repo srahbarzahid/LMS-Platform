@@ -75,7 +75,19 @@ const CustomStackedHorizontalBarChart = ({ data, yKey, keys, colors }) => <Respo
       {keys.map((key, index) => <Bar key={key} dataKey={key} stackId="a" fill={colors[index]} radius={index === 0 ? [0, 0, 0, 0] : index === keys.length - 1 ? [0, 4, 4, 0] : [0, 0, 0, 0]} barSize={30} />)}
     </BarChart>
   </ResponsiveContainer>;
-const CustomDonutChart = ({ data, nameKey, dataKey }) => <ResponsiveContainer width="100%" height={260}>
+const CustomDonutChart = ({ data, nameKey, dataKey, emptyText = "No records yet" }) => {
+  const total = (data || []).reduce((sum, item) => sum + Number(item[dataKey] || 0), 0);
+  if (total === 0) {
+    return (
+      <div className="w-full h-[260px] flex flex-col items-center justify-center text-center p-4">
+        <div className="w-24 h-24 rounded-full border-4 border-dashed border-[#e5e7eb] flex items-center justify-center mb-2">
+          <span className="text-xs font-bold text-[#9CA3AF]">0%</span>
+        </div>
+        <p className="text-xs font-semibold text-[#6B7280]">{emptyText}</p>
+      </div>
+    );
+  }
+  return <ResponsiveContainer width="100%" height={260}>
     <PieChart>
       <defs>
         <filter id="pieShadow" x="-20%" y="-20%" width="140%" height="140%">
@@ -111,6 +123,7 @@ const CustomDonutChart = ({ data, nameKey, dataKey }) => <ResponsiveContainer wi
       <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: "13px", color: "#4B5563", fontWeight: 500 }} />
     </PieChart>
   </ResponsiveContainer>;
+};
 const CircularProgressChart = ({ value, label, subtext, color = "#ff6b00" }) => {
   const data = [
     { name: "Completed", value, fill: color },

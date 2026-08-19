@@ -1,19 +1,28 @@
 import { Outlet, NavLink, useParams, useNavigate } from "react-router-dom";
 import { User, BarChart2, Folder, Clock, ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
+import { instructorApi } from "../../../api/instructorApi";
+
 const StudentDetailsLayout = () => {
   const { studentId } = useParams();
   const navigate = useNavigate();
   const [student, setStudent] = useState(null);
   useEffect(() => {
-    setTimeout(() => {
-      setStudent({
-        id: studentId,
-        name: studentId === "stu_1" ? "Alice Smith" : "Bob Johnson",
-        email: studentId === "stu_1" ? "alice.smith@example.com" : "bob.j@example.com",
-        avatar: studentId === "stu_1" ? "A" : "B"
-      });
-    }, 300);
+    let isMounted = true;
+
+    const fetchStudent = async () => {
+      try {
+        const response = await instructorApi.getStudentDetails(studentId);
+        if (isMounted) setStudent(response.data);
+      } catch {
+        if (isMounted) setStudent(null);
+      }
+    };
+
+    fetchStudent();
+    return () => {
+      isMounted = false;
+    };
   }, [studentId]);
   const tabs = [
     { name: "Details", path: `/instructor/students/${studentId}`, icon: <User className="w-4 h-4" />, exact: true },

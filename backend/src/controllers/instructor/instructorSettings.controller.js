@@ -1,24 +1,12 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../../prisma.js";
+
 const getUserId = (req) => {
-  return req.user?.userId || "default-instructor-id";
+  return req.user?.userId || req.user?.id || "";
 };
+
 const getProfile = async (req, res) => {
   const userId = getUserId(req);
-  const defaultProfile = {
-    id: userId,
-    name: "Sarah Jenkins",
-    email: "sarah.jenkins@example.com",
-    phone: "+1 (555) 987-6543",
-    designation: "Senior Computer Science Instructor",
-    bio: "Over 10 years of experience teaching web technologies, full-stack architecture, and database engineering.",
-    role: "INSTRUCTOR",
-    profileImage: null,
-    pendingEmail: null,
-    pendingPhone: null,
-    isEmailVerified: true,
-    isPhoneVerified: true
-  };
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -37,81 +25,104 @@ const getProfile = async (req, res) => {
         isPhoneVerified: true
       }
     });
+
+    if (user) {
+      return res.json({
+        status: "success",
+        data: {
+          ...user,
+          phone: user.phone || "",
+          designation: user.designation || "",
+          bio: user.bio || ""
+        }
+      });
+    }
+
     res.json({
       status: "success",
-      data: user || defaultProfile
+      data: {
+        id: userId,
+        name: req.user?.name || "Instructor",
+        email: req.user?.email || "",
+        phone: "",
+        designation: "",
+        bio: "",
+        role: "INSTRUCTOR",
+        profileImage: null,
+        pendingEmail: null,
+        pendingPhone: null,
+        isEmailVerified: true,
+        isPhoneVerified: false
+      }
     });
   } catch (error) {
-    res.json({
-      status: "success",
-      data: defaultProfile
+    res.status(500).json({
+      status: "error",
+      message: error.message || "Failed to fetch profile."
     });
   }
 };
+
 const updateProfile = async (req, res) => {
   const userId = getUserId(req);
   const { name, email, phone, designation, bio, removePhoto } = req.body;
-  let profileImage = void 0;
+  let profileImage = undefined;
   if (req.file) {
     profileImage = `/uploads/${req.file.filename}`;
   } else if (removePhoto === "true" || removePhoto === true) {
     profileImage = null;
   }
+
   try {
-    let user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ status: "error", message: "User not found." });
+    }
+
     const updateData = {};
-    if (name !== void 0) updateData.name = name.trim();
-    if (designation !== void 0) updateData.designation = designation.trim();
-    if (bio !== void 0) updateData.bio = bio.trim();
-    if (profileImage !== void 0) updateData.profileImage = profileImage;
-    if (email !== void 0 && user && email.trim() !== user.email) {
+    if (name !== undefined) updateData.name = name.trim();
+    if (designation !== undefined) updateData.designation = designation.trim();
+    if (bio !== undefined) updateData.bio = bio.trim();
+    if (phone !== undefined) updateData.phone = phone.trim();
+    if (profileImage !== undefined) updateData.profileImage = profileImage;
+    if (email !== undefined && email.trim() !== user.email) {
       updateData.pendingEmail = email.trim();
       updateData.isEmailVerified = false;
     }
-    if (phone !== void 0 && user && phone.trim() !== (user.phone || "")) {
-      updateData.pendingPhone = phone.trim();
-      updateData.isPhoneVerified = false;
-    }
-    if (user) {
-      user = await prisma.user.update({
-        where: { id: userId },
-        data: updateData
-      });
-    }
-    res.json({
-      status: "success",
-      message: "Instructor profile updated successfully.",
-      data: {
-        id: userId,
-        name: name || user?.name || "Sarah Jenkins",
-        email: user?.email || "sarah.jenkins@example.com",
-        phone: user?.phone || "+1 (555) 987-6543",
-        designation: designation || user?.designation || "Senior Computer Science Instructor",
-        bio: bio || user?.bio || "Over 10 years of experience teaching web technologies.",
-        profileImage: profileImage !== void 0 ? profileImage : user?.profileImage || null,
-        pendingEmail: updateData.pendingEmail || null,
-        pendingPhone: updateData.pendingPhone || null,
-        isEmailVerified: updateData.isEmailVerified !== void 0 ? updateData.isEmailVerified : true,
-        isPhoneVerified: updateData.isPhoneVerified !== void 0 ? updateData.isPhoneVerified : true
-      }
-    });
-  } catch (error) {
-    res.json({
-      status: "success",
-      message: "Instructor profile updated successfully.",
-      data: {
-        id: userId,
-        name: name || "Sarah Jenkins",
-        email: "sarah.jenkins@example.com",
-        phone: phone || "+1 (555) 987-6543",
-        designation: designation || "Senior Computer Science Instructor",
-        bio: bio || "Over 10 years of experience teaching web technologies.",
-        profileImage: profileImage || null,
-        pendingEmail: email || null,
-        pendingPhone: null,
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        designation: true,
+        bio: true,
+        role: true,
+        profileImage: true,
+        pendingEmail: true,
+        pendingPhone: true,
         isEmailVerified: true,
         isPhoneVerified: true
       }
+    });
+
+    res.json({
+      status: "success",
+      message: "Instructor profile updated successfully.",
+      data: {
+        ...updatedUser,
+        phone: updatedUser.phone || "",
+        designation: updatedUser.designation || "",
+        bio: updatedUser.bio || ""
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message || "Failed to update profile."
     });
   }
 };

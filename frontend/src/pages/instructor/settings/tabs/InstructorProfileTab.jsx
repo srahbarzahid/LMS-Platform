@@ -123,6 +123,16 @@ const InstructorProfileTab = () => {
             isEmailVerified: data.data.isEmailVerified,
             isPhoneVerified: data.data.isPhoneVerified
           });
+
+          const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+          const updatedUser = {
+            ...currentUser,
+            name: data.data.name || name,
+            email: data.data.email || email,
+            profileImage: data.data.profileImage
+          };
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+          window.dispatchEvent(new Event("profileUpdate"));
         }
       } else {
         toast.error(data.message || "Failed to save profile.");

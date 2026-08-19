@@ -14,38 +14,60 @@ import {
 } from "lucide-react";
 import { CustomVerticalBarChart } from "../../components/analytics/ChartCards";
 import DashboardAnnouncements from "../../components/DashboardAnnouncements";
+import { instructorApi } from "../../api/instructorApi";
+import { getApiErrorMessage } from "../../api/client";
+
+const emptyStats = {
+  totalCourses: 0,
+  totalStudents: 0,
+  totalRevenue: 0,
+  averageRating: 0,
+  pendingAssignments: 0,
+  pendingProjects: 0,
+  completionRate: 0,
+  recentEnrollments: [],
+  recentReviews: [],
+  revenueChart: []
+};
+
 const InstructorDashboard = () => {
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState(emptyStats);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [revenueTime, setRevenueTime] = useState("Last 7 Days");
   const [revenueDropdownOpen, setRevenueDropdownOpen] = useState(false);
   useEffect(() => {
-    setTimeout(() => {
-      setStats({
-        totalCourses: 12,
-        totalStudents: 4850,
-        totalRevenue: 24500.5,
-        averageRating: 4.8,
-        pendingAssignments: 34,
-        pendingProjects: 12,
-        completionRate: 68,
-        recentEnrollments: [
-          { id: 1, name: "Alice Smith", course: "React Masterclass", date: "2 hours ago" },
-          { id: 2, name: "Bob Johnson", course: "Advanced UI/UX", date: "5 hours ago" },
-          { id: 3, name: "Charlie Brown", course: "Node.js Backend", date: "1 day ago" }
-        ],
-        recentReviews: [
-          { id: 1, name: "David Lee", course: "React Masterclass", rating: 5, text: "Amazing course, very detailed!", date: "1 day ago" },
-          { id: 2, name: "Emma Wilson", course: "Node.js Backend", rating: 4, text: "Great content, but pace is fast.", date: "2 days ago" }
-        ]
-      });
-      setLoading(false);
-    }, 800);
+    let isMounted = true;
+
+    const fetchDashboard = async () => {
+      setLoading(true);
+      try {
+        const response = await instructorApi.getDashboardStats();
+        if (isMounted) {
+          setStats({ ...emptyStats, ...(response.data || {}) });
+          setError("");
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(getApiErrorMessage(err, "Failed to load dashboard"));
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchDashboard();
+    return () => {
+      isMounted = false;
+    };
   }, []);
   if (loading) {
     return <div className="flex h-full items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>;
+  }
+  if (error) {
+    return <div className="bg-white border border-border rounded-2xl p-8 text-center text-red-600 font-bold">{error}</div>;
   }
   return <div className="max-w-7xl mx-auto space-y-8 pb-8">
       <DashboardAnnouncements endpoint="/instructor/announcements" />
@@ -70,10 +92,10 @@ const InstructorDashboard = () => {
     /* Top Stats Cards */
   }
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Revenue" value={`$${stats.totalRevenue.toLocaleString()}`} icon={<DollarSign className="w-6 h-6 text-green-500" />} trend="+12.5%" />
-        <StatCard title="Total Students" value={stats.totalStudents.toLocaleString()} icon={<Users className="w-6 h-6 text-blue-500" />} trend="+4.2%" />
-        <StatCard title="Average Rating" value={stats.averageRating} icon={<Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />} trend="+0.1" />
-        <StatCard title="Total Courses" value={stats.totalCourses} icon={<Book className="w-6 h-6 text-purple-500" />} />
+        <StatCard title="Total Revenue" value={`$${Number(stats.totalRevenue || 0).toLocaleString()}`} icon={<DollarSign className="w-6 h-6 text-green-500" />} trend={stats.revenueTrend || "+0.0%"} />
+        <StatCard title="Total Students" value={Number(stats.totalStudents || 0).toLocaleString()} icon={<Users className="w-6 h-6 text-blue-500" />} trend={stats.studentsTrend || "+0.0%"} />
+        <StatCard title="Average Rating" value={stats.averageRating || 0} icon={<Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />} trend={stats.ratingTrend || "+0.0"} />
+        <StatCard title="Total Courses" value={stats.totalCourses || 0} icon={<Book className="w-6 h-6 text-purple-500" />} trend={stats.coursesTrend || "+0.0%"} />
       </div>
 
       {
@@ -145,15 +167,7 @@ const InstructorDashboard = () => {
           </div>
           <div className="h-[300px] mt-4 w-full">
             <CustomVerticalBarChart
-    data={[
-      { name: "Mon", Revenue: 2e3 },
-      { name: "Tue", Revenue: 3e3 },
-      { name: "Wed", Revenue: 2250 },
-      { name: "Thu", Revenue: 4e3 },
-      { name: "Fri", Revenue: 3250 },
-      { name: "Sat", Revenue: 4500 },
-      { name: "Sun", Revenue: 3750 }
-    ]}
+    data={stats.revenueChart?.length ? stats.revenueChart : [{ name: "No Data", Revenue: 0 }]}
     xKey="name"
     yKey="Revenue"
   />
@@ -206,7 +220,7 @@ const InstructorDashboard = () => {
             <Link to="/instructor/students" className="text-primary text-sm font-bold hover:underline">View All</Link>
           </div>
           <div className="space-y-4">
-            {stats.recentEnrollments.map((enrollment) => <div key={enrollment.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 border border-transparent hover:border-border transition-colors">
+            {stats.recentEnrollments.length > 0 ? stats.recentEnrollments.map((enrollment) => <div key={enrollment.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 border border-transparent hover:border-border transition-colors">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
                   {enrollment.name.charAt(0)}
                 </div>
@@ -215,7 +229,7 @@ const InstructorDashboard = () => {
                   <p className="text-xs text-body truncate">Enrolled in: <span className="font-medium text-heading">{enrollment.course}</span></p>
                 </div>
                 <div className="text-xs text-caption shrink-0">{enrollment.date}</div>
-              </div>)}
+              </div>) : <div className="text-sm text-caption py-8 text-center">No enrollments yet.</div>}
           </div>
         </div>
 
@@ -225,7 +239,7 @@ const InstructorDashboard = () => {
             <Link to="/instructor/reviews" className="text-primary text-sm font-bold hover:underline">View All</Link>
           </div>
           <div className="space-y-4">
-            {stats.recentReviews.map((review) => <div key={review.id} className="p-4 rounded-xl border border-border bg-gray-50/50">
+            {stats.recentReviews.length > 0 ? stats.recentReviews.map((review) => <div key={review.id} className="p-4 rounded-xl border border-border bg-gray-50/50">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex gap-1">
                     {[1, 2, 3, 4, 5].map((star) => <Star key={star} className={`w-4 h-4 ${star <= review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}
@@ -238,7 +252,7 @@ const InstructorDashboard = () => {
                   <span className="w-1 h-1 rounded-full bg-gray-300" />
                   <span className="truncate">{review.course}</span>
                 </div>
-              </div>)}
+              </div>) : <div className="text-sm text-caption py-8 text-center">No reviews yet.</div>}
           </div>
         </div>
       </div>

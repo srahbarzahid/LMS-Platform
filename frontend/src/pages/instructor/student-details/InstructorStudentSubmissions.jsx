@@ -1,20 +1,37 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, FileText, CheckCircle, XCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { instructorApi } from "../../../api/instructorApi";
+
 const InstructorStudentSubmissions = () => {
+  const { studentId } = useParams();
   const [activeTab, setActiveTab] = useState("assignments");
+  const [submissions, setSubmissions] = useState({ assignments: [], projects: [], quizzes: [] });
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const mockAssignments = [
-    { id: "1", title: "User Persona Creation", submittedDate: "2 days ago", status: "Graded", marks: "90/100", feedback: "Great detail on user pain points." },
-    { id: "2", title: "Wireframing Basics", submittedDate: "1 day ago", status: "Pending Review", marks: "-", feedback: "-" }
-  ];
-  const mockProjects = [
-    { id: "1", title: "Mobile App Redesign", submittedDate: "3 days ago", status: "Graded", marks: "85/100", feedback: "Good use of whitespace." }
-  ];
-  const mockQuizzes = [
-    { id: "1", title: "UX Fundamentals", score: "18/20", attempts: 1, result: "Pass", date: "1 week ago" },
-    { id: "2", title: "Color Theory", score: "12/20", attempts: 2, result: "Fail", date: "5 days ago" }
-  ];
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchSubmissions = async () => {
+      setLoading(true);
+      try {
+        const response = await instructorApi.getStudentSubmissions(studentId);
+        if (isMounted) setSubmissions({ assignments: [], projects: [], quizzes: [], ...(response.data || {}) });
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchSubmissions();
+    return () => {
+      isMounted = false;
+    };
+  }, [studentId]);
+  if (loading) {
+    return <div className="flex py-16 items-center justify-center bg-white border border-border rounded-2xl">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>;
+  }
   return <div className="bg-white border border-border rounded-2xl shadow-sm overflow-hidden pb-6">
       
       {
@@ -58,7 +75,7 @@ const InstructorStudentSubmissions = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {mockAssignments.map((a) => <tr key={a.id} className="hover:bg-gray-50/50 transition-colors">
+                {submissions.assignments.length > 0 ? submissions.assignments.map((a) => <tr key={a.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="py-4 px-4 font-bold text-heading text-sm">
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-primary" /> {a.title}
@@ -79,7 +96,7 @@ const InstructorStudentSubmissions = () => {
                         <Eye className="w-3.5 h-3.5" /> View Submission
                       </button>
                     </td>
-                  </tr>)}
+                  </tr>) : <tr><td colSpan={5} className="py-8 text-center text-caption">No assignment submissions yet.</td></tr>}
               </tbody>
             </table>
           </div>}
@@ -96,7 +113,7 @@ const InstructorStudentSubmissions = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {mockProjects.map((p) => <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                {submissions.projects.length > 0 ? submissions.projects.map((p) => <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="py-4 px-4 font-bold text-heading text-sm">
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-primary" /> {p.title}
@@ -117,7 +134,7 @@ const InstructorStudentSubmissions = () => {
                         <Eye className="w-3.5 h-3.5" /> View Submission
                       </button>
                     </td>
-                  </tr>)}
+                  </tr>) : <tr><td colSpan={5} className="py-8 text-center text-caption">No project submissions yet.</td></tr>}
               </tbody>
             </table>
           </div>}
@@ -135,7 +152,7 @@ const InstructorStudentSubmissions = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {mockQuizzes.map((q) => <tr key={q.id} className="hover:bg-gray-50/50 transition-colors">
+                {submissions.quizzes.length > 0 ? submissions.quizzes.map((q) => <tr key={q.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="py-4 px-4 font-bold text-heading text-sm">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-primary" /> {q.title}
@@ -157,7 +174,7 @@ const InstructorStudentSubmissions = () => {
                         <Eye className="w-3.5 h-3.5" /> View Result
                       </button>
                     </td>
-                  </tr>)}
+                  </tr>) : <tr><td colSpan={6} className="py-8 text-center text-caption">No quiz results yet.</td></tr>}
               </tbody>
             </table>
           </div>}

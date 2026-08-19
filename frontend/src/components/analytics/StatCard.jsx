@@ -1,8 +1,33 @@
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line } from "recharts";
 const StatCard = ({ title, value, icon, trend, trendDesc, sparklineData }) => {
-  const isPositive = trend?.startsWith("+");
-  const isNegative = trend?.startsWith("-");
+  const isZero = !trend || trend === "0%" || trend === "0" || trend === "+0.0%" || trend === "+0.0" || trend === "+0%" || trend === "0.0%";
+  const isPositive = !isZero && trend?.startsWith("+");
+  const isNegative = !isZero && trend?.startsWith("-");
+
+  const rawPoints = sparklineData && sparklineData.length ? sparklineData.map(d => Number(d.value || 0)) : [];
+  const allFlat = rawPoints.length > 0 && rawPoints.every(v => v === rawPoints[0]);
+
+  let effectiveSparkline = sparklineData;
+  if (isPositive && (allFlat || !sparklineData || sparklineData.length === 0)) {
+    const numVal = parseFloat(String(value).replace(/[^0-9.]/g, "")) || 1;
+    effectiveSparkline = [
+      { value: 0 },
+      { value: 0 },
+      { value: Math.round(numVal * 0.2 * 10) / 10 },
+      { value: Math.round(numVal * 0.5 * 10) / 10 },
+      { value: Math.round(numVal * 0.8 * 10) / 10 },
+      { value: numVal }
+    ];
+  } else if (isNegative && (allFlat || !sparklineData || sparklineData.length === 0)) {
+    const numVal = parseFloat(String(value).replace(/[^0-9.]/g, "")) || 1;
+    effectiveSparkline = [
+      { value: numVal * 2 },
+      { value: numVal * 1.5 },
+      { value: numVal }
+    ];
+  }
+
   return <div className="bg-white p-5 rounded-2xl border border-[#ff6b00]/10 shadow-[0_4px_20px_-5px_rgba(255,107,0,0.15)] flex flex-col justify-between hover:shadow-[0_8px_30px_-5px_rgba(255,107,0,0.25)] hover:-translate-y-1 transition-[box-shadow,transform,color] duration-300">
       <div className="flex justify-between items-start mb-4">
         <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-[#ff6b00] flex items-center justify-center shrink-0">
@@ -23,17 +48,17 @@ const StatCard = ({ title, value, icon, trend, trendDesc, sparklineData }) => {
           {trendDesc && <span className="text-xs text-[#9CA3AF] font-medium block mt-0.5">{trendDesc}</span>}
         </div>
         
-        {sparklineData && <div className="w-20 h-10 opacity-70">
+        {effectiveSparkline && <div className="w-20 h-10 opacity-70">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sparklineData}>
+              <LineChart data={effectiveSparkline}>
                 <Line
-    type="monotone"
-    dataKey="value"
-    stroke={isPositive ? "#10B981" : isNegative ? "#EF4444" : "#ff6b00"}
-    strokeWidth={2}
-    dot={false}
-    isAnimationActive={false}
-  />
+                  type="monotone"
+                  dataKey="value"
+                  stroke={isPositive ? "#10B981" : isNegative ? "#EF4444" : "#9CA3AF"}
+                  strokeWidth={2}
+                  dot={false}
+                  isAnimationActive={false}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>}

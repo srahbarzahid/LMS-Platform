@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Search, Filter, Star, Heart, ArrowUpDown } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useWishlist } from "../context/WishlistContext";
 import CustomDropdown from "../components/common/CustomDropdown";
 
@@ -14,11 +14,18 @@ const sortOptions = [
 ];
 
 const Courses = () => {
-  const [search, setSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlSearch = searchParams.get("search") || "";
+  const [search, setSearch] = useState(urlSearch);
   const [sortBy, setSortBy] = useState("most-relevant");
   const { toggleWishlist, isInWishlist } = useWishlist();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setSearch(urlSearch);
+  }, [urlSearch]);
+
   useEffect(() => {
     axios.get("/api/courses?limit=100").then((res) => {
       setCourses(Array.isArray(res.data.data) ? res.data.data : res.data.courses || []);
@@ -28,7 +35,29 @@ const Courses = () => {
       setLoading(false);
     });
   }, []);
-  const filteredCourses = courses.filter((c) => search === "" || c.title.toLowerCase().includes(search.toLowerCase()));
+
+  const handleSearchChange = (val) => {
+    setSearch(val);
+    if (val.trim()) {
+      setSearchParams({ search: val });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const filteredCourses = courses.filter((c) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase().trim();
+    return (
+      c.title?.toLowerCase().includes(q) ||
+      c.subtitle?.toLowerCase().includes(q) ||
+      c.description?.toLowerCase().includes(q) ||
+      c.category?.toLowerCase().includes(q) ||
+      c.instructor?.name?.toLowerCase().includes(q) ||
+      c.level?.toLowerCase().includes(q)
+    );
+  });
+
   return <div className="bg-[#f8f9fa] min-h-screen pt-32 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
@@ -46,7 +75,7 @@ const Courses = () => {
     type="text"
     placeholder="Search courses..."
     value={search}
-    onChange={(e) => setSearch(e.target.value)}
+    onChange={(e) => handleSearchChange(e.target.value)}
     className="w-full pl-12 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none shadow-sm transition-all text-body"
   />
           </div>

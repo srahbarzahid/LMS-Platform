@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getAuthToken } from "../utils/auth";
+import { getAuthToken, setAuthSession } from "../utils/auth";
 
 const apiClient = axios.create({
   baseURL: "/api",
@@ -18,6 +18,31 @@ apiClient.interceptors.request.use((config) => {
 
   return config;
 });
+
+// Response interceptor for handling 401 Unauthorized / Invalid Token
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const refreshRes = await axios.post("/api/auth/refresh-token", {}, { withCredentials: true });
+        const newToken = refreshRes.data?.accessToken || refreshRes.data?.token;
+        if (newToken) {
+          setAuthSession(newToken);
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return apiClient(originalRequest);
+        }
+      } catch (refreshErr) {
+        console.warn("Session refresh attempt skipped:", refreshErr.message);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export const normalizeApiPath = (path) => {
   if (!path) return "/";

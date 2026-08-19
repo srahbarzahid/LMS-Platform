@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useParams } from "react-router-dom";
+import toast from "react-hot-toast";
 import {
   Save,
   Send,
   CheckCircle,
-  Upload,
   Image as ImageIcon,
   Video,
   AlertCircle,
@@ -12,13 +12,57 @@ import {
   Check,
   FileText,
   DollarSign,
-  List
+  List,
+  UploadCloud
 } from "lucide-react";
+import { instructorApi } from "../../api/instructorApi";
+import { getApiErrorMessage } from "../../api/client";
+
+const COURSE_FORM_STEPS = [
+  { id: "basic", label: "Basic Info", icon: FileText },
+  { id: "media", label: "Media", icon: ImageIcon },
+  { id: "pricing", label: "Pricing", icon: DollarSign },
+  { id: "details", label: "Details", icon: List }
+];
+
+const listToTextarea = (value) => (Array.isArray(value) ? value.join("\n") : value || "");
+const listToTags = (value) => (Array.isArray(value) ? value.join(", ") : value || "");
+
+const courseToFormData = (course) => {
+  if (!course) return {};
+  return {
+    title: course.title || "",
+    subtitle: course.subtitle || "",
+    shortDescription: course.shortDescription || "",
+    fullDescription: course.fullDescription || course.description || "",
+    category: typeof course.category === "string" ? course.category : course.category?.name || "",
+    categoryId: course.categoryId || "",
+    level: course.level || "Beginner",
+    language: course.language || "English",
+    price: course.price ?? "",
+    discountPrice: course.discountPrice ?? "",
+    tags: listToTags(course.tags),
+    certificateEnabled: course.certificateEnabled ?? course.certificateAvail ?? true,
+    requirements: listToTextarea(course.requirements),
+    learningOutcomes: listToTextarea(course.learningOutcomes),
+    targetAudience: course.targetAudience || "",
+    thumbnail: course.thumbnail || "",
+    promoVideoUrl: course.promoVideoUrl || ""
+  };
+};
+
 const InstructorCreateCourse = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(Boolean(id));
   const [activeTab, setActiveTab] = useState("basic");
+
+  // Media Upload States & Modes
+  const [thumbnailMode, setThumbnailMode] = useState("upload");
+  const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
+  const thumbnailInputRef = useRef(null);
+
   const [formData, setFormData] = useState({
     title: "",
     subtitle: "",
@@ -34,18 +78,64 @@ const InstructorCreateCourse = () => {
     requirements: "",
     learningOutcomes: "",
     targetAudience: "",
+    thumbnail: "",
     promoVideoUrl: ""
   });
-  useEffect(() => {
-    if (id) {
-      setFormData((prev) => ({
-        ...prev,
-        title: "Complete UI/UX Design Masterclass",
-        subtitle: "Learn design from scratch",
-        price: "89.99",
-        category: "Design"
-      }));
+
+  const handleFileUpload = async (e, type) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const data = new FormData();
+    data.append("file", file);
+
+    setIsUploadingThumbnail(true);
+
+    try {
+      const res = await instructorApi.uploadThumbnail(data);
+      if (res?.success && res?.url) {
+        setFormData((prev) => ({
+          ...prev,
+          thumbnail: res.url
+        }));
+        toast.success("Thumbnail image uploaded successfully!");
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      toast.error(getApiErrorMessage(err, "Failed to upload image"));
+    } finally {
+      setIsUploadingThumbnail(false);
     }
+  };
+
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+
+    const fetchCourse = async () => {
+      setInitialLoading(true);
+      try {
+        const response = await instructorApi.getCourseDetails(id);
+        const courseData = response?.data || response?.course || response;
+        if (isMounted && courseData) {
+          setFormData((prev) => ({
+            ...prev,
+            ...courseToFormData(courseData)
+          }));
+        }
+      } catch (error) {
+        console.error("Fetch course details error:", error);
+        toast.error(getApiErrorMessage(error, "Failed to load course details"));
+        navigate("/instructor/courses");
+      } finally {
+        if (isMounted) setInitialLoading(false);
+      }
+    };
+
+    fetchCourse();
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -54,19 +144,44 @@ const InstructorCreateCourse = () => {
       [name]: type === "checkbox" ? e.target.checked : value
     }));
   };
-  const handleSubmit = async (action) => {
+  const handleSubmit = async (action = "draft") => {
+    if (!formData.title.trim()) {
+      toast.error("Course title is required");
+      setActiveTab("basic");
+      return;
+    }
+
+    if (!formData.category.trim()) {
+      toast.error("Course category is required");
+      setActiveTab("basic");
+      return;
+    }
+
     setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1e3));
-      alert(`Course successfully saved as ${action}!`);
-      navigate("/instructor/courses");
+      const payload = {
+        ...formData,
+        description: formData.fullDescription,
+        action: "draft"
+      };
+      const response = id
+        ? await instructorApi.updateCourse(id, payload)
+        : await instructorApi.createCourse(payload);
+      const courseId = response.data?.id || id;
+      toast.success("Course details saved successfully!");
+      navigate(`/instructor/curriculum?courseId=${courseId}`);
     } catch (error) {
       console.error(error);
-      alert("Failed to save course.");
+      toast.error(getApiErrorMessage(error, "Failed to save course details"));
     } finally {
       setLoading(false);
     }
   };
+  if (initialLoading) {
+    return <div className="max-w-5xl mx-auto py-24 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>;
+  }
   return <div className="max-w-5xl mx-auto space-y-6 pb-12">
       
       {
@@ -78,22 +193,6 @@ const InstructorCreateCourse = () => {
             <ChevronLeft className="w-4 h-4" /> Back to Courses
           </Link>
           <h1 className="text-3xl font-heading font-bold text-heading">{id ? "Edit Course" : "Create New Course"}</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-    onClick={() => handleSubmit("draft")}
-    disabled={loading}
-    className="flex items-center gap-2 bg-white border border-border text-heading px-4 py-2.5 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-colors"
-  >
-            <Save className="w-4 h-4 text-gray-500" /> Save as Draft
-          </button>
-          <button
-    onClick={() => handleSubmit("review")}
-    disabled={loading}
-    className="flex items-center gap-2 bg-primary/10 text-primary px-4 py-2.5 rounded-xl font-bold shadow-sm hover:bg-primary/20 transition-colors"
-  >
-            <Send className="w-4 h-4" /> Submit for Review
-          </button>
         </div>
       </div>
 
@@ -111,21 +210,17 @@ const InstructorCreateCourse = () => {
   />
         </div>
 
-        {[
-    { id: "basic", label: "Basic Info", icon: <FileText className="w-5 h-5" /> },
-    { id: "media", label: "Media", icon: <ImageIcon className="w-5 h-5" /> },
-    { id: "pricing", label: "Pricing", icon: <DollarSign className="w-5 h-5" /> },
-    { id: "details", label: "Details", icon: <List className="w-5 h-5" /> }
-  ].map((step, index) => {
+        {COURSE_FORM_STEPS.map((step, index) => {
     const currentIndex = ["basic", "media", "pricing", "details"].indexOf(activeTab);
     const isCompleted = index < currentIndex;
     const isActive = index === currentIndex;
+    const StepIcon = step.icon;
     return <div key={step.id} className="relative z-10 flex flex-col items-center">
               <button
       onClick={() => setActiveTab(step.id)}
       className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${isActive ? "bg-primary border-primary/30 text-white shadow-lg scale-110" : isCompleted ? "bg-primary border-primary text-white hover:bg-secondary" : "bg-white border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500"}`}
     >
-                {isCompleted ? <Check className="w-6 h-6" /> : step.icon}
+                {isCompleted ? <Check className="w-6 h-6" /> : <StepIcon className="w-5 h-5" />}
               </button>
               <span className={`text-xs sm:text-sm font-bold absolute -bottom-8 whitespace-nowrap transition-colors duration-300 ${isActive || isCompleted ? "text-primary" : "text-caption"}`}>
                 {step.label}
@@ -247,52 +342,150 @@ const InstructorCreateCourse = () => {
             </div>
           </div>}
 
-        {
-    /* MEDIA TAB */
-  }
-        {activeTab === "media" && <div className="space-y-8 animate-fade-in">
-            
+        {/* MEDIA TAB */}
+        {activeTab === "media" && (
+          <div className="space-y-8 animate-fade-in">
+            {/* Course Thumbnail Upload / URL */}
             <div>
-              <h3 className="text-lg font-heading font-bold text-heading mb-4">Course Thumbnail</h3>
-              <div className="border-2 border-dashed border-border rounded-2xl p-8 flex flex-col items-center justify-center text-center bg-gray-50 hover:bg-orange-50/50 hover:border-primary/50 transition-colors cursor-pointer group">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
-                  <ImageIcon className="w-8 h-8 text-caption group-hover:text-primary transition-colors" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div>
+                  <h3 className="text-lg font-heading font-bold text-heading">Course Thumbnail</h3>
+                  <p className="text-xs text-caption">Upload a high quality image for your course card thumbnail.</p>
                 </div>
-                <h4 className="font-bold text-heading text-sm mb-1">Upload Thumbnail</h4>
-                <p className="text-xs text-caption mb-4">PNG, JPG, or WebP (1280x720 recommended)</p>
-                <button className="px-4 py-2 bg-white border border-border rounded-lg text-sm font-bold text-heading hover:bg-gray-50 shadow-sm flex items-center gap-2">
-                  <Upload className="w-4 h-4" /> Select File
-                </button>
+                <div className="flex items-center bg-gray-100 dark:bg-neutral-800 p-1 rounded-xl text-xs font-bold shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setThumbnailMode("upload")}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      thumbnailMode === "upload" ? "bg-white dark:bg-neutral-900 text-primary shadow-xs" : "text-caption hover:text-heading"
+                    }`}
+                  >
+                    Upload File
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setThumbnailMode("url")}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      thumbnailMode === "url" ? "bg-white dark:bg-neutral-900 text-primary shadow-xs" : "text-caption hover:text-heading"
+                    }`}
+                  >
+                    Image URL
+                  </button>
+                </div>
               </div>
+
+              {thumbnailMode === "upload" ? (
+                <div>
+                  <input
+                    type="file"
+                    ref={thumbnailInputRef}
+                    onChange={handleFileUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  {formData.thumbnail ? (
+                    <div className="relative rounded-2xl overflow-hidden border border-border bg-gray-50 dark:bg-neutral-800 p-4 flex flex-col sm:flex-row items-center gap-6">
+                      <img
+                        src={formData.thumbnail}
+                        alt="Course Thumbnail"
+                        className="w-full sm:w-48 h-32 object-cover rounded-xl shadow-sm shrink-0"
+                      />
+                      <div className="space-y-2 text-center sm:text-left flex-1 min-w-0">
+                        <div className="flex items-center gap-2 text-xs font-bold text-green-600 bg-green-50 dark:bg-green-950/40 px-2.5 py-1 rounded-full w-fit mx-auto sm:mx-0">
+                          <CheckCircle className="w-3.5 h-3.5" /> Thumbnail Attached
+                        </div>
+                        <p className="text-xs text-caption truncate max-w-sm">{formData.thumbnail}</p>
+                        <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => thumbnailInputRef.current?.click()}
+                            className="px-3 py-1.5 bg-white dark:bg-neutral-900 border border-border rounded-lg text-xs font-bold text-heading hover:border-primary transition-colors cursor-pointer"
+                          >
+                            Change Image
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, thumbnail: "" }))}
+                            className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => thumbnailInputRef.current?.click()}
+                      className="border-2 border-dashed border-border hover:border-primary/50 bg-gray-50/50 dark:bg-neutral-800/40 rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-primary/5 group"
+                    >
+                      {isUploadingThumbnail ? (
+                        <div className="flex flex-col items-center py-4">
+                          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mb-3" />
+                          <p className="text-sm font-bold text-primary">Uploading thumbnail image...</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform">
+                            <UploadCloud className="w-7 h-7" />
+                          </div>
+                          <h4 className="text-sm font-bold text-heading mb-1">Click to Upload Course Thumbnail Image</h4>
+                          <p className="text-xs text-caption max-w-sm mb-4">
+                            Supported: PNG, JPG, WEBP, GIF (Recommended size: 1280x720)
+                          </p>
+                          <span className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl shadow-xs hover:bg-secondary transition-colors">
+                            Browse Image File
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-heading mb-2">Thumbnail Image URL</label>
+                    <input
+                      type="url"
+                      name="thumbnail"
+                      value={formData.thumbnail}
+                      onChange={handleChange}
+                      placeholder="https://example.com/course-thumbnail.jpg"
+                      className="w-full px-4 py-3 bg-gray-50 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm text-heading"
+                    />
+                  </div>
+                  <div className="h-32 rounded-2xl overflow-hidden bg-gray-100 border border-border flex items-center justify-center">
+                    {formData.thumbnail ? (
+                      <img src={formData.thumbnail} alt="Course thumbnail preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="w-8 h-8 text-caption" />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Promotional Video URL */}
             <div>
-              <h3 className="text-lg font-heading font-bold text-heading mb-4">Promotional Video</h3>
-              <div className="border-2 border-dashed border-border rounded-2xl p-8 flex flex-col items-center justify-center text-center bg-gray-50 hover:bg-blue-50/50 hover:border-blue-500/50 transition-colors cursor-pointer group mb-4">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
-                  <Video className="w-8 h-8 text-caption group-hover:text-blue-500 transition-colors" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div>
+                  <h3 className="text-lg font-heading font-bold text-heading">Promotional Video</h3>
+                  <p className="text-xs text-caption">Add a hosted YouTube, Vimeo, or direct video link.</p>
                 </div>
-                <h4 className="font-bold text-heading text-sm mb-1">Upload Video</h4>
-                <p className="text-xs text-caption mb-4">MP4, WebM (Max 500MB)</p>
-                <button className="px-4 py-2 bg-white border border-border rounded-lg text-sm font-bold text-heading hover:bg-gray-50 shadow-sm flex items-center gap-2">
-                  <Upload className="w-4 h-4" /> Select Video File
-                </button>
-              </div>
-              
-              <div className="flex items-center gap-4 text-sm font-bold text-caption my-4">
-                <hr className="flex-1 border-border" /> OR <hr className="flex-1 border-border" />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-heading mb-2">Video URL (YouTube / Vimeo)</label>
-                <input
-    type="text"
-    name="promoVideoUrl"
-    value={formData.promoVideoUrl}
-    onChange={handleChange}
-    placeholder="https://youtube.com/watch?v=..."
-    className="w-full px-4 py-3 bg-gray-50 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm"
-  />
+                <label className="block text-sm font-bold text-heading mb-2">Video URL (YouTube / Vimeo / Direct Link)</label>
+                <div className="relative">
+                  <Video className="w-5 h-5 text-caption absolute left-4 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="url"
+                    name="promoVideoUrl"
+                    value={formData.promoVideoUrl}
+                    onChange={handleChange}
+                    placeholder="https://youtube.com/watch?v=..."
+                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm text-heading"
+                  />
+                </div>
               </div>
             </div>
 
@@ -304,7 +497,8 @@ const InstructorCreateCourse = () => {
                 Next: Pricing
               </button>
             </div>
-          </div>}
+          </div>
+        )}
 
         {
     /* PRICING TAB */
@@ -439,12 +633,12 @@ const InstructorCreateCourse = () => {
                 Back
               </button>
               <button
-    onClick={() => handleSubmit("review")}
-    disabled={loading}
-    className="bg-green-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-600 transition-colors flex items-center gap-2 shadow-md shadow-green-500/20"
-  >
-                {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle className="w-5 h-5" />}
-                Submit for Review
+                onClick={() => handleSubmit("save")}
+                disabled={loading}
+                className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-secondary transition-colors flex items-center gap-2 shadow-md cursor-pointer"
+              >
+                {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save className="w-5 h-5" />}
+                Save Changes & Continue to Curriculum
               </button>
             </div>
           </div>}

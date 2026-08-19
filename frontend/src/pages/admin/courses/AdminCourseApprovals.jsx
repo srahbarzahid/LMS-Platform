@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { BookOpen, CheckCircle, Clock, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { getApiErrorMessage } from "../../../api/client";
 import CourseApprovalTable from "../../../components/admin/courses/CourseApprovalTable";
 import CourseReviewModal from "../../../components/admin/courses/CourseReviewModal";
 import ConfirmModal from "../../../components/common/ConfirmModal";
@@ -29,13 +29,15 @@ const AdminCourseApprovals = () => {
   const fetchPendingCourses = async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/admin/courses/pending?page=${page}&limit=10&search=${searchTerm}`);
+      const res = await apiClient.get("/admin/courses/pending", {
+        params: { page, limit: 10, search: searchTerm }
+      });
       setData(res.data.data);
       setTotal(res.data.total);
       setTotalPages(res.data.totalPages);
       setStats(res.data.stats);
     } catch (err) {
-      toast.error("Failed to load pending courses");
+      toast.error(getApiErrorMessage(err, "Failed to load pending courses"));
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +69,7 @@ const AdminCourseApprovals = () => {
     if (!courseId || !action) return;
     try {
       if (action === "approve") {
-        await axios.patch(`http://localhost:5000/api/admin/courses/${courseId}/status`, {
+        await apiClient.patch(`/admin/courses/${courseId}/status`, {
           status: "Published",
           notes: "Approved by Administrator"
         });
@@ -77,7 +79,7 @@ const AdminCourseApprovals = () => {
           message: "The course has been published and is now available to students."
         });
       } else if (action === "reject") {
-        await axios.patch(`http://localhost:5000/api/admin/courses/${courseId}/status`, {
+        await apiClient.patch(`/admin/courses/${courseId}/status`, {
           status: "Rejected",
           reason: reason || "Does not meet platform standards",
           notes: "Rejected by Administrator"
@@ -90,7 +92,7 @@ const AdminCourseApprovals = () => {
       }
       fetchPendingCourses();
     } catch (err) {
-      toast.error(`Failed to ${action} course`);
+      toast.error(getApiErrorMessage(err, `Failed to ${action} course`));
     } finally {
       setConfirmModalState({ isOpen: false, courseId: null, action: null });
     }

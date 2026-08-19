@@ -212,48 +212,44 @@ const InstructorAccountSecurityTab = () => {
             <div className="relative">
               <Lock className="w-4 h-4 text-caption absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-    type={showCurrentPassword ? "text" : "password"}
-    value={currentPassword}
-    onChange={(e) => setCurrentPassword(e.target.value)}
-    className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-border rounded-xl text-sm text-heading focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-    placeholder="Enter current password"
-  />
+                type={showCurrentPassword ? "text" : "password"}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="off"
+                className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-border rounded-xl text-sm text-heading focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                placeholder="Enter current password"
+              />
               <button
-    type="button"
-    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-caption hover:text-heading"
-  >
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-caption hover:text-heading"
+              >
                 {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
-          {
-    /* New Password & Strength Meter */
-  }
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-caption mb-1.5">New Password</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-caption absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-    type={showNewPassword ? "text" : "password"}
-    value={newPassword}
-    onChange={(e) => setNewPassword(e.target.value)}
-    className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-border rounded-xl text-sm text-heading focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-    placeholder="Enter new password"
-  />
+                type={showNewPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-border rounded-xl text-sm text-heading focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                placeholder="Enter new password"
+              />
               <button
-    type="button"
-    onClick={() => setShowNewPassword(!showNewPassword)}
-    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-caption hover:text-heading"
-  >
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-caption hover:text-heading"
+              >
                 {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
 
-            {
-    /* Strength meter */
-  }
             {newPassword && <div className="mt-2 space-y-1">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-caption">Password Strength:</span>
@@ -266,25 +262,23 @@ const InstructorAccountSecurityTab = () => {
               </div>}
           </div>
 
-          {
-    /* Confirm Password */
-  }
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-caption mb-1.5">Confirm New Password</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-caption absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-    type={showConfirmPassword ? "text" : "password"}
-    value={confirmPassword}
-    onChange={(e) => setConfirmPassword(e.target.value)}
-    className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-border rounded-xl text-sm text-heading focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-    placeholder="Confirm new password"
-  />
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-border rounded-xl text-sm text-heading focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                placeholder="Confirm new password"
+              />
               <button
-    type="button"
-    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-caption hover:text-heading"
-  >
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-caption hover:text-heading"
+              >
                 {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>

@@ -1,9 +1,13 @@
 import { InstructorAnalyticsService } from "../services/instructorAnalytics.service.js";
+
+const getInstructorId = (req) => req.user?.userId || req.user?.id;
+
 const handleRequest = async (req, res, serviceMethod) => {
   try {
-    const data = await serviceMethod();
+    const data = await serviceMethod(getInstructorId(req));
     res.json({ success: true, data });
   } catch (error) {
+    console.error("Instructor analytics error:", error);
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };

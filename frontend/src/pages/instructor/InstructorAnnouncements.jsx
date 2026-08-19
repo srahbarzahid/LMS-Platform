@@ -10,43 +10,114 @@ import {
   X,
   Users
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { instructorApi } from "../../api/instructorApi";
+import { getApiErrorMessage } from "../../api/client";
+
 const InstructorAnnouncements = () => {
   const [announcements, setAnnouncements] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [selectedCourseFilter, setSelectedCourseFilter] = useState("All Courses");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [modalCourse, setModalCourse] = useState("Select a course...");
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
   const [modalDropdownOpen, setModalDropdownOpen] = useState(false);
   useEffect(() => {
-    setTimeout(() => {
-      setAnnouncements([
-        {
-          id: "1",
-          title: "Welcome to the New React Architecture Module!",
-          course: "React Architecture",
-          date: "Oct 25, 2023",
-          audience: "All Enrolled Students",
-          views: 145,
-          text: "I just uploaded the new module covering advanced React hooks and performance optimization. Make sure to check it out!"
-        },
-        {
-          id: "2",
-          title: "Live Q&A Session Tomorrow",
-          course: "UI/UX Masterclass",
-          date: "Oct 20, 2023",
-          audience: "All Enrolled Students",
-          views: 312,
-          text: "Join me tomorrow at 5 PM EST for a live Q&A session where we will review your design portfolios."
+    let isMounted = true;
+
+    const fetchAnnouncements = async () => {
+      setLoading(true);
+      try {
+        const response = await instructorApi.getAnnouncements();
+        if (isMounted) {
+          setAnnouncements(Array.isArray(response.data) ? response.data : []);
+          setCourses(Array.isArray(response.courses) ? response.courses : []);
+          setError("");
         }
-      ]);
-      setLoading(false);
-    }, 600);
+      } catch (err) {
+        if (isMounted) setError(getApiErrorMessage(err, "Failed to load announcements"));
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchAnnouncements();
+    return () => {
+      isMounted = false;
+    };
   }, []);
+  const courseFilterOptions = ["All Courses", ...courses.map((course) => course.title)];
   const filteredAnnouncements = announcements.filter(
-    (a) => a.title.toLowerCase().includes(searchTerm.toLowerCase()) || a.course.toLowerCase().includes(searchTerm.toLowerCase()) || a.text.toLowerCase().includes(searchTerm.toLowerCase())
+    (a) => {
+      const matchesSearch = a.title.toLowerCase().includes(searchTerm.toLowerCase()) || a.course.toLowerCase().includes(searchTerm.toLowerCase()) || a.text.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCourse = selectedCourseFilter === "All Courses" || a.course === selectedCourseFilter;
+      return matchesSearch && matchesCourse;
+    }
   );
+  const resetModal = () => {
+    setEditingAnnouncement(null);
+    setModalCourse("Select a course...");
+    setModalTitle("");
+    setModalMessage("");
+  };
+  const openCreateModal = () => {
+    resetModal();
+    setShowAddModal(true);
+  };
+  const openEditModal = (announcement) => {
+    setEditingAnnouncement(announcement);
+    setModalTitle(announcement.title || "");
+    setModalMessage(announcement.text || announcement.message || "");
+    setModalCourse(announcement.course || "All Courses");
+    setShowAddModal(true);
+  };
+  const selectedCourse = courses.find((course) => course.title === modalCourse);
+  const handlePostAnnouncement = async () => {
+    if (!modalTitle.trim() || !modalMessage.trim()) {
+      toast.error("Title and message are required");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        title: modalTitle,
+        message: modalMessage,
+        courseId: !modalCourse || modalCourse === "Select a course..." || modalCourse === "All Courses" ? "all" : (selectedCourse?.id || "all")
+      };
+      const response = editingAnnouncement
+        ? await instructorApi.updateAnnouncement(editingAnnouncement.announcementId || editingAnnouncement.id, payload)
+        : await instructorApi.createAnnouncement(payload);
+
+      setAnnouncements((prev) => editingAnnouncement
+        ? prev.map((item) => ((item.announcementId || item.id) === (editingAnnouncement.announcementId || editingAnnouncement.id) ? response.data : item))
+        : [response.data, ...prev]);
+      toast.success(editingAnnouncement ? "Announcement updated" : "Announcement posted");
+      setShowAddModal(false);
+      resetModal();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to save announcement"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  const handleDeleteAnnouncement = async (announcement) => {
+    const targetId = announcement.announcementId || announcement.id;
+    try {
+      await instructorApi.deleteAnnouncement(targetId);
+      setAnnouncements((prev) => prev.filter((item) => (item.announcementId || item.id) !== targetId));
+      toast.success("Announcement deleted");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to delete announcement"));
+    }
+  };
   return <div className="max-w-6xl mx-auto space-y-6 pb-8">
       
       {
@@ -58,7 +129,7 @@ const InstructorAnnouncements = () => {
           <p className="text-body mt-1">Communicate with your students across all courses.</p>
         </div>
         <button
-    onClick={() => setShowAddModal(true)}
+    onClick={openCreateModal}
     className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold shadow-md hover:bg-secondary transition-colors shrink-0"
   >
           <PlusCircle className="w-5 h-5" />
@@ -96,7 +167,7 @@ const InstructorAnnouncements = () => {
             {filterDropdownOpen && <>
                 <div className="fixed inset-0 z-40" onClick={() => setFilterDropdownOpen(false)} />
                 <div className="absolute right-0 top-full mt-2 w-full md:w-48 bg-white border border-border rounded-xl shadow-lg z-50 overflow-hidden">
-                  {["All Courses", "UI/UX Masterclass", "React Architecture"].map((opt) => <div
+                  {courseFilterOptions.map((opt) => <div
     key={opt}
     onClick={() => {
       setSelectedCourseFilter(opt);
@@ -115,7 +186,7 @@ const InstructorAnnouncements = () => {
       {
     /* Announcements List */
   }
-      {loading ? <div className="flex py-20 items-center justify-center">
+      {error ? <div className="bg-white rounded-2xl border border-border shadow-sm p-8 text-center text-red-600 font-bold">{error}</div> : loading ? <div className="flex py-20 items-center justify-center">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </div> : <div className="space-y-4">
           {filteredAnnouncements.length > 0 ? filteredAnnouncements.map((announcement) => <div key={announcement.id} className="bg-white rounded-2xl border border-border shadow-sm p-6 flex flex-col sm:flex-row gap-6 hover:shadow-md transition-shadow group">
@@ -133,10 +204,10 @@ const InstructorAnnouncements = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button title="Edit" className="p-2 text-caption hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                    <button onClick={() => openEditModal(announcement)} title="Edit" className="p-2 text-caption hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button title="Delete" className="p-2 text-caption hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                    <button onClick={() => handleDeleteAnnouncement(announcement)} title="Delete" className="p-2 text-caption hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                     <button title="Resend Notification" className="p-2 text-caption hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
@@ -162,8 +233,11 @@ const InstructorAnnouncements = () => {
       {showAddModal && <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl relative custom-scrollbar">
             <div className="sticky top-0 bg-white border-b border-border p-6 flex justify-between items-center z-10">
-              <h2 className="text-2xl font-heading font-bold text-heading">Create Announcement</h2>
-              <button onClick={() => setShowAddModal(false)} className="p-2 text-caption hover:text-heading hover:bg-gray-100 rounded-full transition-colors">
+              <h2 className="text-2xl font-heading font-bold text-heading">{editingAnnouncement ? "Edit Announcement" : "Create Announcement"}</h2>
+              <button onClick={() => {
+    setShowAddModal(false);
+    resetModal();
+  }} className="p-2 text-caption hover:text-heading hover:bg-gray-100 rounded-full transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -171,7 +245,7 @@ const InstructorAnnouncements = () => {
             <div className="p-6 space-y-6">
               <div>
                 <label className="block text-sm font-bold text-heading mb-2">Announcement Title <span className="text-red-500">*</span></label>
-                <input type="text" placeholder="e.g. New module uploaded!" className="w-full px-4 py-3 bg-gray-50 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" />
+                <input value={modalTitle} onChange={(e) => setModalTitle(e.target.value)} type="text" placeholder="e.g. New module uploaded!" className="w-full px-4 py-3 bg-gray-50 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" />
               </div>
 
               <div className="relative">
@@ -187,7 +261,7 @@ const InstructorAnnouncements = () => {
                   {modalDropdownOpen && <>
                       <div className="fixed inset-0 z-40" onClick={() => setModalDropdownOpen(false)} />
                       <div className="absolute left-0 top-full mt-2 w-full bg-white border border-border rounded-xl shadow-lg z-50 overflow-hidden">
-                        {["All Courses", "UI/UX Masterclass", "React Architecture"].map((opt) => <div
+                        {courseFilterOptions.map((opt) => <div
     key={opt}
     onClick={() => {
       setModalCourse(opt);
@@ -218,6 +292,8 @@ const InstructorAnnouncements = () => {
                   <textarea
     rows={6}
     placeholder="Write your announcement here..."
+    value={modalMessage}
+    onChange={(e) => setModalMessage(e.target.value)}
     className="w-full px-4 py-3 outline-none resize-none text-sm"
   />
                 </div>
@@ -232,11 +308,14 @@ const InstructorAnnouncements = () => {
             </div>
 
             <div className="sticky bottom-0 bg-white border-t border-border p-6 flex justify-end gap-3 z-10">
-              <button onClick={() => setShowAddModal(false)} className="px-6 py-2.5 border border-border rounded-xl font-bold text-heading hover:bg-gray-50 transition-colors">
+              <button onClick={() => {
+    setShowAddModal(false);
+    resetModal();
+  }} className="px-6 py-2.5 border border-border rounded-xl font-bold text-heading hover:bg-gray-50 transition-colors">
                 Cancel
               </button>
-              <button onClick={() => setShowAddModal(false)} className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-secondary transition-colors shadow-md">
-                <Send className="w-4 h-4" /> Post Announcement
+              <button disabled={saving} onClick={handlePostAnnouncement} className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-secondary transition-colors shadow-md disabled:opacity-60">
+                <Send className="w-4 h-4" /> {saving ? "Saving..." : editingAnnouncement ? "Save Announcement" : "Post Announcement"}
               </button>
             </div>
           </div>

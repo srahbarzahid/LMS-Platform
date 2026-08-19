@@ -7,9 +7,15 @@ import {
   BarChart2,
   CheckCircle,
   Clock,
-  ChevronDown
+  ChevronDown,
+  TrendingUp,
+  TrendingDown,
+  Minus
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { instructorApi } from "../../api/instructorApi";
+import { getApiErrorMessage } from "../../api/client";
+
 const CustomDropdown = ({ icon: Icon, options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -59,86 +65,41 @@ const CustomDropdown = ({ icon: Icon, options, value, onChange, placeholder }) =
 };
 const InstructorCertificates = () => {
   const [certificates, setCertificates] = useState([]);
+  const [stats, setStats] = useState({ issued: 0, eligible: 0, pending: 0, avgCompletion: 0 });
+  const [courseOptions, setCourseOptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCourse, setFilterCourse] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [sortBy, setSortBy] = useState("");
   const navigate = useNavigate();
   useEffect(() => {
-    const mockData = [
-      {
-        id: "1",
-        studentName: "Alice Smith",
-        studentEmail: "alice.smith@example.com",
-        studentAvatar: "A",
-        courseName: "UI/UX Masterclass",
-        courseId: "course_1",
-        enrollmentDate: "2023-08-15",
-        completionDate: "2023-10-24",
-        issueDate: "2023-10-24",
-        certificateStatus: "Issued",
-        certificateId: "CERT-104928A"
-      },
-      {
-        id: "2",
-        studentName: "Bob Johnson",
-        studentEmail: "bob.j@example.com",
-        studentAvatar: "B",
-        courseName: "React Architecture",
-        courseId: "course_2",
-        enrollmentDate: "2023-09-01",
-        completionDate: null,
-        issueDate: null,
-        certificateStatus: "Pending",
-        certificateId: "N/A"
-      },
-      {
-        id: "3",
-        studentName: "Charlie Brown",
-        studentEmail: "charlie.b@example.com",
-        studentAvatar: "C",
-        courseName: "React Architecture",
-        courseId: "course_2",
-        enrollmentDate: "2023-09-10",
-        completionDate: "2023-10-15",
-        issueDate: "2023-10-15",
-        certificateStatus: "Issued",
-        certificateId: "CERT-847291B"
-      },
-      {
-        id: "4",
-        studentName: "Diana Prince",
-        studentEmail: "diana.p@example.com",
-        studentAvatar: "D",
-        courseName: "Digital Marketing Pro",
-        courseId: "course_3",
-        enrollmentDate: "2023-08-01",
-        completionDate: "2023-09-10",
-        issueDate: null,
-        certificateStatus: "Eligible",
-        certificateId: "N/A"
-      }
-    ];
+    let isMounted = true;
+
     const fetchCertificates = async () => {
+      setLoading(true);
       try {
-        const response = await fetch("/api/instructor/certificates", {
-          headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-        });
-        if (response.ok) {
-          const result = await response.json();
-          setCertificates(result.data && result.data.length > 0 ? result.data : mockData);
-        } else {
-          setCertificates(mockData);
+        const response = await instructorApi.getCertificates();
+        if (isMounted) {
+          setCertificates(Array.isArray(response.data) ? response.data : []);
+          setStats((prev) => ({ ...prev, ...(response.stats || {}) }));
+          setCourseOptions(Array.isArray(response.courses) ? response.courses : []);
+          setError("");
         }
       } catch (error) {
-        console.error("Error fetching certificates, using fallback:", error);
-        setCertificates(mockData);
+        if (isMounted) {
+          setError(getApiErrorMessage(error, "Failed to load certificates"));
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
-    setTimeout(fetchCertificates, 600);
+
+    fetchCertificates();
+    return () => {
+      isMounted = false;
+    };
   }, []);
   const filteredCertificates = certificates.filter((c) => {
     const matchesSearch = c.studentName.toLowerCase().includes(searchTerm.toLowerCase()) || c.studentEmail.toLowerCase().includes(searchTerm.toLowerCase()) || c.certificateId.toLowerCase().includes(searchTerm.toLowerCase());
@@ -167,15 +128,57 @@ const InstructorCertificates = () => {
   }
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-    { title: "Certificates Issued", value: "1,248", icon: <Award className="w-5 h-5 text-blue-500" />, color: "bg-blue-50", trend: "+12% this month" },
-    { title: "Eligible Students", value: "342", icon: <CheckCircle className="w-5 h-5 text-green-500" />, color: "bg-green-50", trend: "Ready to issue" },
-    { title: "Pending Certificates", value: "85", icon: <Clock className="w-5 h-5 text-orange-500" />, color: "bg-orange-50", trend: "In progress" },
-    { title: "Avg Course Completion", value: "68%", icon: <BarChart2 className="w-5 h-5 text-purple-500" />, color: "bg-purple-50", trend: "+5% this month" }
-  ].map((stat, idx) => <div key={idx} className="bg-white p-5 rounded-2xl border border-border shadow-sm flex items-center justify-between">
+          {
+            title: "Certificates Issued",
+            value: stats.issued.toLocaleString(),
+            icon: <Award className="w-5 h-5 text-blue-500" />,
+            color: "bg-blue-50",
+            trendText: stats.issued === 0 ? "No records issued" : `${stats.issued} issued`,
+            trendType: stats.issued > 0 ? "up" : "neutral",
+            changeText: stats.issued > 0 ? "+100%" : "0%"
+          },
+          {
+            title: "Eligible Students",
+            value: stats.eligible.toLocaleString(),
+            icon: <CheckCircle className="w-5 h-5 text-green-500" />,
+            color: "bg-green-50",
+            trendText: stats.eligible === 0 ? "No students eligible" : `${stats.eligible} ready`,
+            trendType: stats.eligible > 0 ? "up" : "neutral",
+            changeText: stats.eligible > 0 ? "+100%" : "0%"
+          },
+          {
+            title: "Pending Certificates",
+            value: stats.pending.toLocaleString(),
+            icon: <Clock className="w-5 h-5 text-orange-500" />,
+            color: "bg-orange-50",
+            trendText: stats.pending === 0 ? "No active progress" : `${stats.pending} in progress`,
+            trendType: stats.pending > 0 ? "up" : "neutral",
+            changeText: stats.pending > 0 ? "+100%" : "0%"
+          },
+          {
+            title: "Avg Course Completion",
+            value: `${stats.avgCompletion}%`,
+            icon: <BarChart2 className="w-5 h-5 text-purple-500" />,
+            color: "bg-purple-50",
+            trendText: stats.avgCompletion === 0 ? "No progress data" : `${stats.avgCompletion}% average progress`,
+            trendType: stats.avgCompletion >= 50 ? "up" : "neutral",
+            changeText: stats.avgCompletion > 0 ? `+${stats.avgCompletion}%` : "0%"
+          }
+        ].map((stat, idx) => <div key={idx} className="bg-white p-5 rounded-2xl border border-border shadow-sm flex items-center justify-between">
             <div>
               <div className="text-xs font-bold text-caption uppercase tracking-wider mb-1">{stat.title}</div>
               <div className="text-2xl font-heading font-bold text-heading">{stat.value}</div>
-              <div className="text-xs text-primary font-medium mt-1">{stat.trend}</div>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
+                  stat.trendType === "up" ? "bg-green-100 text-green-700" : stat.trendType === "down" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+                }`}>
+                  {stat.trendType === "up" && <TrendingUp className="w-3 h-3" />}
+                  {stat.trendType === "down" && <TrendingDown className="w-3 h-3" />}
+                  {stat.trendType === "neutral" && <Minus className="w-3 h-3" />}
+                  {stat.changeText}
+                </span>
+                <span className="text-xs text-caption font-medium">{stat.trendText}</span>
+              </div>
             </div>
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${stat.color}`}>
               {stat.icon}
@@ -204,7 +207,7 @@ const InstructorCertificates = () => {
     placeholder="Filter Course"
     value={filterCourse}
     onChange={setFilterCourse}
-    options={["UI/UX Masterclass", "React Architecture", "Digital Marketing Pro"]}
+    options={courseOptions}
   />
           <CustomDropdown
     placeholder="Filter Status"
@@ -224,7 +227,7 @@ const InstructorCertificates = () => {
       {
     /* Certificates List */
   }
-      {loading ? <div className="flex py-20 items-center justify-center">
+      {error ? <div className="bg-white rounded-2xl border border-border shadow-sm p-8 text-center text-red-600 font-bold">{error}</div> : loading ? <div className="flex py-20 items-center justify-center">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </div> : filteredCertificates.length > 0 ? <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -280,7 +283,7 @@ const InstructorCertificates = () => {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-    onClick={() => navigate(`/instructor/students/${cert.studentEmail}/progress`)}
+    onClick={() => navigate(`/instructor/students/${cert.studentId}/progress`)}
     title="View Progress"
     className="p-1.5 text-caption hover:text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
   >

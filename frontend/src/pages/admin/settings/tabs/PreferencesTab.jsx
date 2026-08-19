@@ -11,6 +11,23 @@ const SUPPORTED_LANGUAGES = [
   { code: "Chinese", label: "\u4E2D\u6587 (Mandarin Chinese)" },
   { code: "Japanese", label: "\u65E5\u672C\u8A9E (Japanese)" }
 ];
+const applyThemeToDOM = (selectedTheme) => {
+  localStorage.setItem("app_theme", selectedTheme);
+  const isDark = selectedTheme === "Dark" || (selectedTheme === "System" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  if (isDark) {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
+  window.dispatchEvent(new Event("themeChange"));
+};
+
+const applyLanguageToDOM = (selectedLanguage) => {
+  localStorage.setItem("app_language", selectedLanguage);
+  document.documentElement.setAttribute("lang", (selectedLanguage || "en").toLowerCase());
+  window.dispatchEvent(new Event("languageChange"));
+};
+
 const PreferencesTab = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -18,6 +35,14 @@ const PreferencesTab = () => {
   const [theme, setTheme] = useState("System");
   useEffect(() => {
     fetchPreferences();
+
+    const handleGlobalThemeChange = () => {
+      const savedTheme = localStorage.getItem("app_theme") || "System";
+      setTheme(savedTheme);
+    };
+
+    window.addEventListener("themeChange", handleGlobalThemeChange);
+    return () => window.removeEventListener("themeChange", handleGlobalThemeChange);
   }, []);
   const fetchPreferences = async () => {
     setLoading(true);
@@ -27,8 +52,14 @@ const PreferencesTab = () => {
       });
       const data = await res.json();
       if (data.status === "success" && data.data) {
-        if (data.data.preferredLanguage) setPreferredLanguage(data.data.preferredLanguage);
-        if (data.data.theme) setTheme(data.data.theme);
+        if (data.data.preferredLanguage) {
+          setPreferredLanguage(data.data.preferredLanguage);
+          applyLanguageToDOM(data.data.preferredLanguage);
+        }
+        if (data.data.theme) {
+          setTheme(data.data.theme);
+          applyThemeToDOM(data.data.theme);
+        }
       }
     } catch (err) {
       console.error("Failed to load user preferences:", err);
@@ -50,6 +81,8 @@ const PreferencesTab = () => {
       });
       const data = await res.json();
       if (res.ok && data.status === "success") {
+        applyThemeToDOM(theme);
+        applyLanguageToDOM(preferredLanguage);
         toast.success("UI Preferences saved successfully!");
       } else {
         toast.error(data.message || "Failed to save preferences.");

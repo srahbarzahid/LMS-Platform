@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { clearAuthSession } from "../../utils/auth";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -6,6 +6,7 @@ import {
   Book,
   PlusCircle,
   ListTree,
+  PlaySquare,
   CheckSquare,
   ClipboardList,
   Briefcase,
@@ -31,15 +32,64 @@ const InstructorLayout = () => {
   const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const userName = user.name || "Dr. Sarah Jenkins";
-  const userEmail = user.email || "sarah.jenkins@example.com";
+  const [userData, setUserData] = useState(() => JSON.parse(localStorage.getItem("user") || "{}"));
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [announcements, setAnnouncements] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const userName = userData.name || "Dr. Sarah Jenkins";
+  const userEmail = userData.email || "sarah.jenkins@example.com";
   const userInitials = userName
     .split(" ")
     .map((n) => n[0])
     .join("")
     .substring(0, 2)
     .toUpperCase();
+
+  useEffect(() => {
+    const syncUser = () => {
+      setUserData(JSON.parse(localStorage.getItem("user") || "{}"));
+    };
+
+    fetchProfileData();
+    fetchAnnouncements();
+
+    window.addEventListener("profileUpdate", syncUser);
+    return () => window.removeEventListener("profileUpdate", syncUser);
+  }, []);
+
+  const fetchProfileData = async () => {
+    try {
+      const res = await fetch("/api/instructor/settings/profile", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
+      });
+      const data = await res.json();
+      if (data.status === "success" && data.data) {
+        const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const updated = {
+          ...currentUser,
+          name: data.data.name || currentUser.name,
+          email: data.data.email || currentUser.email,
+          profileImage: data.data.profileImage
+        };
+        localStorage.setItem("user", JSON.stringify(updated));
+        setUserData(updated);
+      }
+    } catch (e) {}
+  };
+
+  const fetchAnnouncements = async () => {
+    try {
+      const res = await fetch("/api/instructor/announcements", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
+      });
+      const data = await res.json();
+      const list = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
+      setAnnouncements(list.slice(0, 5));
+      setUnreadCount(list.length);
+    } catch (e) {}
+  };
+
   const handleLogout = () => {
     clearAuthSession();
     navigate("/login", { replace: true });
@@ -62,6 +112,7 @@ const InstructorLayout = () => {
     {
       title: "ASSESSMENTS",
       links: [
+        { name: "Lessons Workspace", path: "/instructor/lessons", icon: <PlaySquare className="w-[18px] h-[18px]" /> },
         { name: "Quizzes", path: "/instructor/quizzes", icon: <CheckSquare className="w-[18px] h-[18px]" /> },
         { name: "Assignments", path: "/instructor/assignments", icon: <ClipboardList className="w-[18px] h-[18px]" /> },
         { name: "Projects", path: "/instructor/projects", icon: <Briefcase className="w-[18px] h-[18px]" /> }
@@ -192,18 +243,66 @@ const InstructorLayout = () => {
           {/* Right Side Tools & User Profile */}
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <ThemeToggle />
-            <Link
-              to="/instructor/announcements"
-              title="Announcements & Alerts"
-              className="relative p-2 text-body hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-xl transition-colors cursor-pointer"
-            >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            </Link>
+
+            {/* Notification Bell & Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                title="Announcements & Alerts"
+                className="relative p-2 text-body hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-xl transition-colors cursor-pointer"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
+              </button>
+
+              {notificationsOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-neutral-900 border border-border rounded-2xl shadow-xl z-50 overflow-hidden animate-fade-in">
+                    <div className="p-4 border-b border-border flex justify-between items-center bg-gray-50/50 dark:bg-neutral-800/50">
+                      <div className="font-bold text-heading text-sm">Notifications & Announcements</div>
+                      <span className="text-xs bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full">{unreadCount}</span>
+                    </div>
+
+                    <div className="max-h-72 overflow-y-auto divide-y divide-border custom-scrollbar">
+                      {announcements.length > 0 ? (
+                        announcements.map((item, idx) => (
+                          <div key={idx} className="p-3.5 hover:bg-gray-50 dark:hover:bg-neutral-800/60 transition-colors">
+                            <div className="text-xs font-bold text-heading">{item.title}</div>
+                            <div className="text-xs text-caption mt-1 line-clamp-2">{item.message || item.text}</div>
+                            <div className="text-[10px] text-caption mt-1.5 font-semibold text-primary">{item.course || "All Courses"} • {item.date || "Just now"}</div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-6 text-center text-xs text-caption">No recent notifications.</div>
+                      )}
+                    </div>
+
+                    <div className="p-3 border-t border-border bg-gray-50/50 dark:bg-neutral-800/50 text-center">
+                      <Link
+                        to="/instructor/announcements"
+                        onClick={() => setNotificationsOpen(false)}
+                        className="text-xs font-bold text-primary hover:underline"
+                      >
+                        View All Announcements →
+                      </Link>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
             <div className="w-px h-6 bg-border hidden sm:block" />
+
+            {/* Profile Avatar */}
             <Link to="/instructor/settings" className="flex items-center gap-3 cursor-pointer group">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 text-primary font-bold text-sm group-hover:bg-primary group-hover:text-white transition-colors">
-                {userInitials}
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 text-primary font-bold text-sm overflow-hidden group-hover:border-primary transition-colors">
+                {userData.profileImage ? (
+                  <img src={userData.profileImage} alt={userName} className="w-full h-full object-cover" />
+                ) : (
+                  userInitials
+                )}
               </div>
               <div className="hidden sm:block text-left">
                 <div className="text-sm font-bold text-heading leading-tight truncate max-w-[120px] md:max-w-none">{userName}</div>

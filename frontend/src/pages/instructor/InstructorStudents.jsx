@@ -15,6 +15,9 @@ import {
   ChevronDown
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { instructorApi } from "../../api/instructorApi";
+import { getApiErrorMessage } from "../../api/client";
+
 const CustomDropdown = ({ icon: Icon, options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -65,79 +68,56 @@ const CustomDropdown = ({ icon: Icon, options, value, onChange, placeholder }) =
 const InstructorStudents = () => {
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeStudents: 0,
+    completed: 0,
+    avgProgress: 0,
+    certificates: 0,
+    pendingReviews: 0
+  });
+  const [courseOptions, setCourseOptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCourse, setFilterCourse] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterProgress, setFilterProgress] = useState("");
   const [sortBy, setSortBy] = useState("");
   useEffect(() => {
-    setTimeout(() => {
-      setStudents([
-        {
-          id: "1",
-          studentId: "stu_1",
-          name: "Alice Smith",
-          email: "alice.smith@example.com",
-          avatar: "A",
-          course: "UI/UX Masterclass",
-          progress: 85,
-          lastActive: "2 hours ago",
-          courseStatus: "Active",
-          certificateStatus: "Pending"
-        },
-        {
-          id: "2a",
-          studentId: "stu_2",
-          name: "Bob Johnson",
-          email: "bob.j@example.com",
-          avatar: "B",
-          course: "UI/UX Masterclass",
-          progress: 100,
-          lastActive: "1 day ago",
-          courseStatus: "Completed",
-          certificateStatus: "Generated"
-        },
-        {
-          id: "2b",
-          studentId: "stu_2",
-          name: "Bob Johnson",
-          email: "bob.j@example.com",
-          avatar: "B",
-          course: "React Architecture",
-          progress: 10,
-          lastActive: "1 day ago",
-          courseStatus: "Active",
-          certificateStatus: "Pending"
-        },
-        {
-          id: "3",
-          studentId: "stu_3",
-          name: "Charlie Brown",
-          email: "charlie.b@example.com",
-          avatar: "C",
-          course: "React Architecture",
-          progress: 100,
-          lastActive: "3 days ago",
-          courseStatus: "Completed",
-          certificateStatus: "Generated"
-        },
-        {
-          id: "4",
-          studentId: "stu_4",
-          name: "Diana Prince",
-          email: "diana.p@example.com",
-          avatar: "D",
-          course: "Digital Marketing Pro",
-          progress: 0,
-          lastActive: "1 week ago",
-          courseStatus: "Inactive",
-          certificateStatus: "Pending"
+    let isMounted = true;
+
+    const fetchStudents = async () => {
+      setLoading(true);
+      try {
+        const response = await instructorApi.getStudents();
+        if (isMounted) {
+          setStudents(Array.isArray(response.data) ? response.data : []);
+          setStats((prev) => ({ ...prev, ...(response.stats || {}) }));
+          setCourseOptions(Array.isArray(response.courses) ? response.courses : []);
+          setError("");
         }
-      ]);
-      setLoading(false);
-    }, 600);
+      } catch (err) {
+        if (isMounted) {
+          setError(getApiErrorMessage(err, "Failed to load students"));
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchStudents();
+    return () => {
+      isMounted = false;
+    };
   }, []);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterCourse, filterStatus, filterProgress, sortBy]);
+
   const filteredStudents = students.filter((s) => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCourse = filterCourse === "" ? true : s.course === filterCourse;
@@ -154,6 +134,11 @@ const InstructorStudents = () => {
     if (sortBy === "Oldest") return a.id.localeCompare(b.id);
     return b.id.localeCompare(a.id);
   });
+
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredStudents.length);
+  const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
   return <div className="max-w-7xl mx-auto space-y-6 pb-8">
       
       {
@@ -171,12 +156,12 @@ const InstructorStudents = () => {
   }
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
-    { title: "Total Students", value: "4,850", icon: <Users className="w-5 h-5 text-blue-500" />, color: "bg-blue-50" },
-    { title: "Active Students", value: "3,210", icon: <Activity className="w-5 h-5 text-green-500" />, color: "bg-green-50" },
-    { title: "Completed", value: "1,540", icon: <CheckCircle className="w-5 h-5 text-purple-500" />, color: "bg-purple-50" },
-    { title: "Avg Progress", value: "68%", icon: <BarChart className="w-5 h-5 text-orange-500" />, color: "bg-orange-50" },
-    { title: "Certificates", value: "1,420", icon: <Award className="w-5 h-5 text-yellow-500" />, color: "bg-yellow-50" },
-    { title: "Pending Reviews", value: "45", icon: <FileText className="w-5 h-5 text-red-500" />, color: "bg-red-50" }
+    { title: "Total Students", value: stats.totalStudents.toLocaleString(), icon: <Users className="w-5 h-5 text-blue-500" />, color: "bg-blue-50" },
+    { title: "Active Students", value: stats.activeStudents.toLocaleString(), icon: <Activity className="w-5 h-5 text-green-500" />, color: "bg-green-50" },
+    { title: "Completed", value: stats.completed.toLocaleString(), icon: <CheckCircle className="w-5 h-5 text-purple-500" />, color: "bg-purple-50" },
+    { title: "Avg Progress", value: `${stats.avgProgress}%`, icon: <BarChart className="w-5 h-5 text-orange-500" />, color: "bg-orange-50" },
+    { title: "Certificates", value: stats.certificates.toLocaleString(), icon: <Award className="w-5 h-5 text-yellow-500" />, color: "bg-yellow-50" },
+    { title: "Pending Reviews", value: stats.pendingReviews.toLocaleString(), icon: <FileText className="w-5 h-5 text-red-500" />, color: "bg-red-50" }
   ].map((stat, idx) => <div key={idx} className="bg-white p-4 rounded-2xl border border-border shadow-sm flex flex-col justify-center items-center text-center">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${stat.color}`}>
               {stat.icon}
@@ -207,7 +192,7 @@ const InstructorStudents = () => {
     placeholder="Filter Course"
     value={filterCourse}
     onChange={setFilterCourse}
-    options={["UI/UX Masterclass", "React Architecture"]}
+    options={courseOptions}
   />
           <CustomDropdown
     placeholder="Filter Status"
@@ -233,7 +218,7 @@ const InstructorStudents = () => {
       {
     /* Students List */
   }
-      {loading ? <div className="flex py-20 items-center justify-center">
+      {error ? <div className="bg-white rounded-2xl border border-border shadow-sm p-8 text-center text-red-600 font-bold">{error}</div> : loading ? <div className="flex py-20 items-center justify-center">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </div> : <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -250,7 +235,7 @@ const InstructorStudents = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredStudents.length > 0 ? filteredStudents.map((student) => <tr key={student.id} className="hover:bg-gray-50/50 transition-colors group">
+                {paginatedStudents.length > 0 ? paginatedStudents.map((student) => <tr key={student.id} className="hover:bg-gray-50/50 transition-colors group">
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
@@ -339,6 +324,48 @@ const InstructorStudents = () => {
               </tbody>
             </table>
           </div>
+
+          {filteredStudents.length > 0 && (
+            <div className="p-4 border-t border-border bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-xs font-medium text-caption">
+                Showing <span className="font-bold text-heading">{filteredStudents.length ? startIndex + 1 : 0}</span> to{" "}
+                <span className="font-bold text-heading">{endIndex}</span> of{" "}
+                <span className="font-bold text-heading">{filteredStudents.length}</span> students
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-heading bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-xs"
+                >
+                  Previous
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-8 h-8 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                      currentPage === pageNum
+                        ? "bg-primary text-white shadow-xs"
+                        : "border border-border text-heading bg-white hover:bg-gray-100"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 border border-border rounded-lg text-xs font-bold text-heading bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-xs"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>}
     </div>;
 };

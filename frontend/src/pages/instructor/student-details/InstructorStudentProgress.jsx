@@ -1,5 +1,43 @@
 import { PlaySquare, CheckSquare, ClipboardList, Briefcase, Award } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { instructorApi } from "../../../api/instructorApi";
+
+const emptyProgress = {
+  overall: 0,
+  lessons: { completed: 0, total: 0, percentage: 0 },
+  quizzes: { completed: 0, total: 0, percentage: 0 },
+  assignments: { completed: 0, total: 0, percentage: 0 },
+  projects: { completed: 0, total: 0, percentage: 0 }
+};
+
 const InstructorStudentProgress = () => {
+  const { studentId } = useParams();
+  const [progress, setProgress] = useState(emptyProgress);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchProgress = async () => {
+      setLoading(true);
+      try {
+        const response = await instructorApi.getStudentProgress(studentId);
+        if (isMounted) setProgress({ ...emptyProgress, ...(response.data || {}) });
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchProgress();
+    return () => {
+      isMounted = false;
+    };
+  }, [studentId]);
+  if (loading) {
+    return <div className="flex py-16 items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>;
+  }
   return <div className="space-y-6">
       
       {
@@ -20,20 +58,20 @@ const InstructorStudentProgress = () => {
     strokeWidth="16"
     fill="transparent"
     strokeDasharray={502}
-    strokeDashoffset={502 - 502 * 85 / 100}
+    strokeDashoffset={502 - 502 * progress.overall / 100}
     className="text-primary transition-all duration-1000"
     strokeLinecap="round"
   />
           </svg>
           <div className="absolute flex flex-col items-center justify-center text-center">
-            <span className="text-4xl font-heading font-bold text-heading">85%</span>
+            <span className="text-4xl font-heading font-bold text-heading">{progress.overall}%</span>
             <span className="text-xs text-caption mt-1">Overall Progress</span>
           </div>
         </div>
         
         <div className="w-full max-w-md space-y-4">
-          <h2 className="text-2xl font-heading font-bold text-heading">Almost there!</h2>
-          <p className="text-body text-sm">Alice has completed 85% of the UI/UX Masterclass. She is on track to finish by the end of the month.</p>
+          <h2 className="text-2xl font-heading font-bold text-heading">{progress.overall >= 100 ? "Completed" : "In progress"}</h2>
+          <p className="text-body text-sm">This progress is calculated from this student's enrollments in your courses.</p>
           <div className="bg-orange-50 text-orange-700 px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-2">
             <Award className="w-5 h-5" /> Eligible for Certificate upon completion
           </div>
@@ -49,9 +87,9 @@ const InstructorStudentProgress = () => {
     title="Lessons Progress"
     icon={<PlaySquare className="w-5 h-5 text-blue-500" />}
     color="bg-blue-50"
-    percentage={90}
-    completed={27}
-    total={30}
+    percentage={progress.lessons.percentage}
+    completed={progress.lessons.completed}
+    total={progress.lessons.total}
     barColor="bg-blue-500"
   />
 
@@ -59,9 +97,9 @@ const InstructorStudentProgress = () => {
     title="Quizzes Progress"
     icon={<CheckSquare className="w-5 h-5 text-green-500" />}
     color="bg-green-50"
-    percentage={80}
-    completed={4}
-    total={5}
+    percentage={progress.quizzes.percentage}
+    completed={progress.quizzes.completed}
+    total={progress.quizzes.total}
     barColor="bg-green-500"
   />
 
@@ -69,9 +107,9 @@ const InstructorStudentProgress = () => {
     title="Assignments Progress"
     icon={<ClipboardList className="w-5 h-5 text-purple-500" />}
     color="bg-purple-50"
-    percentage={75}
-    completed={3}
-    total={4}
+    percentage={progress.assignments.percentage}
+    completed={progress.assignments.completed}
+    total={progress.assignments.total}
     barColor="bg-purple-500"
   />
 
@@ -79,9 +117,9 @@ const InstructorStudentProgress = () => {
     title="Projects Progress"
     icon={<Briefcase className="w-5 h-5 text-yellow-500" />}
     color="bg-yellow-50"
-    percentage={50}
-    completed={1}
-    total={2}
+    percentage={progress.projects.percentage}
+    completed={progress.projects.completed}
+    total={progress.projects.total}
     barColor="bg-yellow-500"
   />
 

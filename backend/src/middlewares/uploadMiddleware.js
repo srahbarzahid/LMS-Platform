@@ -14,10 +14,25 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
+
+const blockedMediaPrefixes = ["video/", "audio/"];
+
+const safeResourceFileFilter = (req, file, cb) => {
+  const mimetype = file.mimetype || "";
+  if (!blockedMediaPrefixes.some((prefix) => mimetype.startsWith(prefix))) {
+    cb(null, true);
+    return;
+  }
+
+  const error = new Error("Video and audio uploads are not stored by this platform yet. Use hosted video URLs instead.");
+  error.statusCode = 415;
+  cb(error);
+};
+
 const upload = multer({
   storage,
+  fileFilter: safeResourceFileFilter,
   limits: { fileSize: 50 * 1024 * 1024 }
-  // 50MB max limit
 });
 export {
   upload

@@ -13,6 +13,7 @@ import adminSettingsRoutes from "./routes/adminSettings.routes.js";
 import studentSettingsRoutes from "./routes/studentSettings.routes.js";
 import instructorSettingsRoutes from "./routes/instructorSettings.routes.js";
 import publicRoutes from "./routes/public.routes.js";
+import uploadRoutes from "./routes/upload.routes.js";
 import path from "path";
 dotenv.config();
 import { prisma } from "./prisma.js";
@@ -33,6 +34,7 @@ app.use("/api/instructor", instructorRoutes);
 app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/public", publicRoutes);
+app.use("/api/upload", uploadRoutes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });

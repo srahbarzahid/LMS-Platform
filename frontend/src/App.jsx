@@ -89,9 +89,34 @@ import { WishlistProvider } from "./context/WishlistContext";
 import { CartProvider } from "./context/CartContext";
 import ProtectedRoute, { PublicRouteGuard } from "./components/common/ProtectedRoute";
 import RouteTracker from "./components/common/RouteTracker";
+import { useEffect } from "react";
+
 const Categories = () => <div className="min-h-[80vh] flex items-center justify-center"><h1 className="text-4xl font-heading font-bold text-primary">Categories (Coming Soon)</h1></div>;
 const AppContent = () => {
   const location = useLocation();
+
+  useEffect(() => {
+    const updateThemeAndLang = () => {
+      const savedTheme = localStorage.getItem("app_theme") || "System";
+      const isDark = savedTheme === "Dark" || (savedTheme === "System" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      if (isDark) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+      const savedLang = localStorage.getItem("app_language") || "English";
+      document.documentElement.setAttribute("lang", (savedLang || "en").toLowerCase());
+    };
+
+    updateThemeAndLang();
+    window.addEventListener("themeChange", updateThemeAndLang);
+    window.addEventListener("languageChange", updateThemeAndLang);
+    return () => {
+      window.removeEventListener("themeChange", updateThemeAndLang);
+      window.removeEventListener("languageChange", updateThemeAndLang);
+    };
+  }, []);
+
   const hideNavAndFooter = location.pathname.startsWith("/student") || location.pathname.startsWith("/admin") || location.pathname.startsWith("/instructor");
   return <div className="flex flex-col min-h-screen">
       <RouteTracker />
@@ -131,6 +156,7 @@ const AppContent = () => {
                 </ProtectedRoute>
               }
             >
+              <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<StudentDashboardOverview />} />
               <Route path="browse-courses" element={<StudentBrowseCourses />} />
               <Route path="courses/:id" element={<StudentCourseDetails />} />
@@ -159,6 +185,7 @@ const AppContent = () => {
                 </ProtectedRoute>
               }
             >
+              <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<InstructorDashboard />} />
               <Route path="courses" element={<InstructorCourses />} />
               <Route path="courses/create" element={<InstructorCreateCourse />} />

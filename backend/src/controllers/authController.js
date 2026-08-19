@@ -5,15 +5,15 @@ import { prisma } from "../prisma.js";
 // Helper function to generate JWT Access and Refresh Tokens
 const generateTokens = (user) => {
   const accessToken = jwt.sign(
-    { userId: user.id, email: user.email, role: user.role },
+    { userId: user.id, id: user.id, email: user.email, role: user.role },
     process.env.JWT_SECRET || "supersecretlmskey123",
-    { expiresIn: "1h" }
+    { expiresIn: "30d" }
   );
 
   const refreshToken = jwt.sign(
-    { userId: user.id },
+    { userId: user.id, id: user.id },
     process.env.JWT_REFRESH_SECRET || "supersecretlmsrefreshkey123",
-    { expiresIn: "7d" }
+    { expiresIn: "30d" }
   );
 
   return { accessToken, refreshToken };

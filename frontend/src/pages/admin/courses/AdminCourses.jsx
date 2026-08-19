@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, CheckCircle, Clock, Edit3, XCircle, EyeOff, Star, Sparkles, Download, Award } from "lucide-react";
 import CourseTable from "../../../components/admin/courses/CourseTable";
 import CustomDropdown from "../../../components/common/CustomDropdown";
 import toast from "react-hot-toast";
+import apiClient, { getApiErrorMessage } from "../../../api/client";
 const AdminCourses = () => {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
@@ -20,13 +20,21 @@ const AdminCourses = () => {
   }, [page, searchTerm, statusFilter, categoryFilter]);
   const fetchCourses = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/admin/courses?page=${page}&limit=10&search=${searchTerm}&status=${statusFilter}&category=${categoryFilter}`);
+      const res = await apiClient.get("/admin/courses", {
+        params: {
+          page,
+          limit: 10,
+          search: searchTerm,
+          status: statusFilter,
+          category: categoryFilter
+        }
+      });
       setData(res.data.data);
       setTotal(res.data.total);
       setTotalPages(res.data.totalPages);
       setStats(res.data.stats);
     } catch (err) {
-      toast.error("Failed to load courses");
+      toast.error(getApiErrorMessage(err, "Failed to load courses"));
     }
   };
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: "", ids: [] });
@@ -40,12 +48,12 @@ const AdminCourses = () => {
   const executeAction = async (action, ids, reason) => {
     try {
       if (action === "delete") {
-        await Promise.all(ids.map((id) => axios.delete(`http://localhost:5000/api/admin/courses/${id}`)));
+        await Promise.all(ids.map((id) => apiClient.delete(`/admin/courses/${id}`)));
         toast.success("Course(s) deleted successfully");
         fetchCourses();
       } else if (["approve", "reject", "publish", "unpublish"].includes(action)) {
-        const newStatus = action === "approve" ? "Approved" : action === "reject" ? "Rejected" : action === "publish" ? "Published" : "Unpublished";
-        await Promise.all(ids.map((id) => axios.patch(`http://localhost:5000/api/admin/courses/${id}/status`, {
+        const newStatus = action === "approve" ? "Published" : action === "reject" ? "Rejected" : action === "publish" ? "Published" : "Unpublished";
+        await Promise.all(ids.map((id) => apiClient.patch(`/admin/courses/${id}/status`, {
           status: newStatus,
           reason: reason || ""
         })));
@@ -53,14 +61,14 @@ const AdminCourses = () => {
         fetchCourses();
       } else if (action === "feature" || action === "unfeature") {
         const isFeatured = action === "feature";
-        await Promise.all(ids.map((id) => axios.patch(`http://localhost:5000/api/admin/courses/${id}/featured`, {
+        await Promise.all(ids.map((id) => apiClient.patch(`/admin/courses/${id}/featured`, {
           featured: isFeatured
         })));
         toast.success(`Course(s) ${isFeatured ? "featured" : "unfeatured"}`);
         fetchCourses();
       }
     } catch (err) {
-      toast.error("Action failed");
+      toast.error(getApiErrorMessage(err, "Action failed"));
     }
     setConfirmModal({ isOpen: false, action: "", ids: [] });
   };
@@ -68,10 +76,8 @@ const AdminCourses = () => {
     switch (status) {
       case "Published":
         return "bg-emerald-50 text-emerald-600 border-emerald-200";
-      case "Pending Approval":
+      case "Pending Review":
         return "bg-yellow-50 text-yellow-600 border-yellow-200";
-      case "Approved":
-        return "bg-blue-50 text-blue-600 border-blue-200";
       case "Draft":
         return "bg-gray-100 text-gray-600 border-gray-200";
       case "Rejected":
@@ -133,7 +139,7 @@ const AdminCourses = () => {
   const statCards = stats ? [
     { label: "Total Courses", value: stats.total, icon: BookOpen, color: "bg-blue-50 text-blue-600", onClick: () => setStatusFilter("All") },
     { label: "Published", value: stats.published, icon: CheckCircle, color: "bg-emerald-50 text-emerald-600", onClick: () => setStatusFilter("Published") },
-    { label: "Pending Approval", value: stats.pending, icon: Clock, color: "bg-yellow-50 text-yellow-600", onClick: () => setStatusFilter("Pending Approval") },
+    { label: "Pending Review", value: stats.pending, icon: Clock, color: "bg-yellow-50 text-yellow-600", onClick: () => setStatusFilter("Pending Review") },
     { label: "Drafts", value: stats.draft, icon: Edit3, color: "bg-gray-50 text-gray-600", onClick: () => setStatusFilter("Draft") },
     { label: "Rejected", value: stats.rejected, icon: XCircle, color: "bg-red-50 text-red-600", onClick: () => setStatusFilter("Rejected") },
     { label: "Unpublished", value: stats.unpublished, icon: EyeOff, color: "bg-orange-50 text-orange-600", onClick: () => setStatusFilter("Unpublished") },
@@ -214,8 +220,7 @@ const AdminCourses = () => {
       options={[
         { label: "All Status", value: "All" },
         { label: "Published", value: "Published" },
-        { label: "Pending Approval", value: "Pending Approval" },
-        { label: "Approved", value: "Approved" },
+        { label: "Pending Review", value: "Pending Review" },
         { label: "Draft", value: "Draft" },
         { label: "Rejected", value: "Rejected" },
         { label: "Unpublished", value: "Unpublished" }

@@ -13,6 +13,8 @@ import {
   Activity,
   BarChart2
 } from "lucide-react";
+import { instructorApi } from "../../api/instructorApi";
+import { getApiErrorMessage } from "../../api/client";
 const CircularProgress = ({ percentage, color = "text-primary" }) => {
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
@@ -68,33 +70,34 @@ const InstructorCertificateDetails = () => {
   const [progress, setProgress] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState("");
   useEffect(() => {
+    let isMounted = true;
+
     const fetchDetails = async () => {
       try {
-        const token = localStorage.getItem("token");
+        setLoading(true);
+        setError("");
         const [detailsRes, progressRes, timelineRes] = await Promise.all([
-          fetch(`/api/instructor/certificates/${certificateId}`, { headers: { "Authorization": `Bearer ${token}` } }),
-          fetch(`/api/instructor/certificates/${certificateId}/progress`, { headers: { "Authorization": `Bearer ${token}` } }),
-          fetch(`/api/instructor/certificates/${certificateId}/student`, { headers: { "Authorization": `Bearer ${token}` } })
+          instructorApi.getCertificateDetails(certificateId),
+          instructorApi.getCertificateProgress(certificateId),
+          instructorApi.getCertificateTimeline(certificateId)
         ]);
-        if (detailsRes.ok && progressRes.ok && timelineRes.ok) {
-          const detailsData = await detailsRes.json();
-          const progressData = await progressRes.json();
-          const timelineData = await timelineRes.json();
-          setDetails(detailsData.data);
-          setProgress(progressData.data);
-          setTimeline(timelineData.data);
-        } else {
-          setError(true);
-        }
+        if (!isMounted) return;
+        setDetails(detailsRes.data || detailsRes);
+        setProgress(progressRes.data || progressRes);
+        setTimeline(timelineRes.data || []);
       } catch (err) {
-        setError(true);
+        if (isMounted) setError(getApiErrorMessage(err, "Failed to load certificate details"));
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
+
     fetchDetails();
+    return () => {
+      isMounted = false;
+    };
   }, [certificateId]);
   if (loading) {
     return <div className="flex h-[calc(100vh-200px)] items-center justify-center">
@@ -104,7 +107,7 @@ const InstructorCertificateDetails = () => {
   if (error || !details) {
     return <div className="max-w-7xl mx-auto space-y-6 pb-8 text-center pt-12">
         <h2 className="text-2xl font-bold text-heading">Certificate Not Found</h2>
-        <p className="text-body mt-2">The certificate you are looking for does not exist or you don't have access.</p>
+        <p className="text-body mt-2">{error || "The certificate you are looking for does not exist or you don't have access."}</p>
         <button
       onClick={() => navigate("/instructor/certificates")}
       className="mt-6 px-6 py-2 bg-primary text-white rounded-xl font-bold"
@@ -189,7 +192,7 @@ const InstructorCertificateDetails = () => {
                 </div>
                 <div>
                   <div className="text-xs text-caption mb-1">Completion Status</div>
-                  <div className="font-bold text-heading text-primary">{progress?.overall}% Completed</div>
+                  <div className="font-bold text-heading text-primary">{progress?.overall || 0}% Completed</div>
                 </div>
                 <div className="flex justify-between items-center text-sm pt-4 border-t border-border">
                   <span className="text-caption">Completion Date</span>
@@ -214,10 +217,10 @@ const InstructorCertificateDetails = () => {
                 <span className="text-sm font-bold text-heading mt-3">Overall Progress</span>
               </div>
               <div className="flex-1 w-full space-y-4">
-                <ProgressBar label="Lessons" completed={progress?.lessons.completed} total={progress?.lessons.total} color="bg-blue-500" />
-                <ProgressBar label="Quizzes" completed={progress?.quizzes.completed} total={progress?.quizzes.total} color="bg-orange-500" />
-                <ProgressBar label="Assignments" completed={progress?.assignments.completed} total={progress?.assignments.total} color="bg-purple-500" />
-                <ProgressBar label="Projects" completed={progress?.projects.completed} total={progress?.projects.total} color="bg-green-500" />
+                <ProgressBar label="Lessons" completed={progress?.lessons?.completed || 0} total={progress?.lessons?.total || 0} color="bg-blue-500" />
+                <ProgressBar label="Quizzes" completed={progress?.quizzes?.completed || 0} total={progress?.quizzes?.total || 0} color="bg-orange-500" />
+                <ProgressBar label="Assignments" completed={progress?.assignments?.completed || 0} total={progress?.assignments?.total || 0} color="bg-purple-500" />
+                <ProgressBar label="Projects" completed={progress?.projects?.completed || 0} total={progress?.projects?.total || 0} color="bg-green-500" />
               </div>
             </div>
           </div>

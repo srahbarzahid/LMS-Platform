@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Plus,
+  Save,
   Edit2,
   Trash2,
   GripVertical,
@@ -13,15 +14,68 @@ import {
   CheckCircle,
   X,
   ExternalLink,
-  Copy
+  Copy,
+  Send,
+  AlertCircle
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import toast from "react-hot-toast";
+import { instructorApi } from "../../api/instructorApi";
+import { getApiErrorMessage } from "../../api/client";
+import ConfirmModal from "../../components/common/ConfirmModal";
+
+const normalizeCurriculumModules = (modules = []) =>
+  (Array.isArray(modules) ? modules : []).map((module) => {
+    const rawItems = Array.isArray(module.items)
+      ? module.items
+      : Array.isArray(module.lessons)
+      ? module.lessons
+      : [];
+
+    return {
+      id: module.id,
+      title: module.title,
+      items: rawItems.map((item) => {
+        const qCount =
+          typeof item.questionCount === "number"
+            ? item.questionCount
+            : Array.isArray(item.questions)
+            ? item.questions.length
+            : Array.isArray(item.questionList)
+            ? item.questionList.length
+            : typeof item.questions === "number"
+            ? item.questions
+            : 0;
+
+        const dur =
+          item.durationMinutes ||
+          item.durationLabel ||
+          (item.duration && item.duration !== "Not set" && item.duration !== "00:00" ? item.duration : "Not set");
+
+        const pts = item.points ?? item.maxMarks ?? 100;
+
+        return {
+          ...item,
+          type: item.type === "video" ? "lesson" : item.type,
+          duration: dur,
+          questions: qCount,
+          points: pts,
+          status: item.status || "Draft"
+        };
+      })
+    };
+  });
+
 const InstructorCurriculum = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialCourseId = searchParams.get("courseId") || "";
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState(initialCourseId);
   const [expandedModules, setExpandedModules] = useState({});
-  const [selectedCourse, setSelectedCourse] = useState("Select Course: UI/UX Masterclass");
   const [editingModuleId, setEditingModuleId] = useState(null);
   const [editingItemId, setEditingItemId] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -34,34 +88,114 @@ const InstructorCurriculum = () => {
     }
   });
   useEffect(() => {
-    setTimeout(() => {
-      const initialModules = [
-        {
-          id: "m1",
-          title: "Introduction to the Course",
-          items: [
-            { id: "i1", type: "lesson", title: "Welcome and Course Overview", duration: "05:30", status: "Published" },
-            { id: "i2", type: "lesson", title: "Setting Up Your Environment", duration: "12:45", status: "Draft" },
-            { id: "i3", type: "quiz", title: "Environment Check Quiz", questions: 5, status: "Draft" }
-          ]
-        },
-        {
-          id: "m2",
-          title: "Core Concepts & Fundamentals",
-          items: [
-            { id: "i4", type: "lesson", title: "Understanding the Basics", duration: "18:20", status: "Draft" },
-            { id: "i5", type: "assignment", title: "First Coding Exercise", points: 100, status: "Draft" },
-            { id: "i6", type: "project", title: "Mini Project: Todo App", points: 200, status: "Draft" }
-          ]
+    let isMounted = true;
+
+    const fetchCourses = async () => {
+      try {
+        const response = await instructorApi.getCourses();
+        const nextCourses = response.data || [];
+        if (!isMounted) return;
+        setCourses(nextCourses);
+        if (!selectedCourseId && nextCourses.length > 0) {
+          setSelectedCourseId(nextCourses[0].id);
         }
-      ];
-      setModules(initialModules);
-      const expandState = {};
-      initialModules.forEach((m) => expandState[m.id] = true);
-      setExpandedModules(expandState);
-      setLoading(false);
-    }, 600);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, "Failed to load courses"));
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchCourses();
+    return () => {
+      isMounted = false;
+    };
   }, []);
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchCurriculum = async () => {
+      if (!selectedCourseId) {
+        setModules([]);
+        setExpandedModules({});
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await instructorApi.getCurriculum(selectedCourseId);
+        const nextModules = normalizeCurriculumModules(response.data);
+        if (!isMounted) return;
+        setModules(nextModules);
+        const expandState = {};
+        nextModules.forEach((module) => {
+          expandState[module.id] = true;
+        });
+        setExpandedModules(expandState);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, "Failed to load curriculum"));
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchCurriculum();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedCourseId]);
+  const selectedCourse = courses.find((course) => course.id === selectedCourseId);
+  const handleCourseSelect = (course) => {
+    setSelectedCourseId(course.id);
+    navigate(`/instructor/curriculum?courseId=${course.id}`, { replace: true });
+  };
+  const handleSaveCurriculum = async () => {
+    if (!selectedCourseId) {
+      toast.error("Select a course first");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await instructorApi.updateCurriculum(selectedCourseId, { modules });
+      const nextModules = normalizeCurriculumModules(response.data);
+      setModules(nextModules);
+      toast.success("Curriculum saved");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to save curriculum"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  const handleSubmitForReview = async () => {
+    if (!selectedCourseId) {
+      toast.error("Select a course first");
+      return;
+    }
+
+    if (modules.length === 0) {
+      toast.error("Add at least one module before submitting");
+      return;
+    }
+
+    const emptyModules = modules.filter((m) => !Array.isArray(m.items) || m.items.length === 0);
+    if (emptyModules.length > 0) {
+      toast.error(`Please add at least one lesson, quiz, or task to all modules before submitting (${emptyModules.length} empty module(s) remaining)`);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await instructorApi.updateCurriculum(selectedCourseId, { modules });
+      await instructorApi.publishCourse(selectedCourseId);
+      toast.success("Course submitted for admin review successfully!");
+      navigate("/instructor/courses");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to submit course"));
+    } finally {
+      setSaving(false);
+    }
+  };
   const toggleModule = (moduleId) => {
     setExpandedModules((prev) => ({
       ...prev,
@@ -85,6 +219,7 @@ const InstructorCurriculum = () => {
     };
     setModules([...modules, newModule]);
     setExpandedModules((prev) => ({ ...prev, [newModule.id]: true }));
+    toast.success("New module added!");
     startEditModule(newModule.id, newModule.title);
   };
   const startEditModule = (id, title) => {
@@ -92,24 +227,44 @@ const InstructorCurriculum = () => {
     setEditingModuleId(id);
     setEditValue(title);
   };
-  const saveModuleTitle = (id) => {
-    if (!editValue.trim()) return;
-    setModules(modules.map((m) => m.id === id ? { ...m, title: editValue } : m));
-    setEditingModuleId(null);
+  const persistModules = async (updatedModules) => {
+    setModules(updatedModules);
+    if (!selectedCourseId) return;
+    try {
+      const response = await instructorApi.updateCurriculum(selectedCourseId, { modules: updatedModules });
+      const nextModules = normalizeCurriculumModules(response.data);
+      setModules(nextModules);
+    } catch (err) {
+      console.error("Auto save curriculum error:", err);
+    }
   };
+
+  const saveModuleTitle = async (id) => {
+    if (!editValue.trim()) return;
+    const updatedModules = modules.map((m) => m.id === id ? { ...m, title: editValue.trim() } : m);
+    setEditingModuleId(null);
+    toast.success("Module title updated & saved!");
+    await persistModules(updatedModules);
+  };
+
   const deleteModule = (id) => {
+    const targetModule = modules.find((m) => m.id === id);
     setConfirmModal({
       isOpen: true,
-      title: "Delete Module",
-      message: "Are you sure you want to delete this module? All lessons and quizzes inside it will be permanently lost.",
-      onConfirm: () => {
-        setModules(modules.filter((m) => m.id !== id));
+      title: "Delete Module Confirmation",
+      message: "This action cannot be undone. All lessons and quizzes inside it will be permanently lost.",
+      expectedTitle: targetModule?.title || "",
+      onConfirm: async () => {
+        const updatedModules = modules.filter((m) => m.id !== id);
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        toast.success("Module deleted!");
+        await persistModules(updatedModules);
       }
     });
   };
+
   const duplicateItem = (moduleId, item) => {
-    setModules(modules.map((m) => {
+    const updatedModules = modules.map((m) => {
       if (m.id === moduleId) {
         const itemIndex = m.items.findIndex((i) => i.id === item.id);
         const newItem = { ...item, id: `i${Date.now()}`, title: `${item.title} (Copy)`, status: "Draft" };
@@ -118,56 +273,74 @@ const InstructorCurriculum = () => {
         return { ...m, items: newItems };
       }
       return m;
-    }));
+    });
+    setModules(updatedModules);
+    toast.success(`${item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : "Item"} duplicated!`);
   };
+
   const startEditItem = (id, title) => {
     setEditingModuleId(null);
     setEditingItemId(id);
     setEditValue(title);
   };
-  const saveItemTitle = (moduleId, itemId) => {
+
+  const saveItemTitle = async (moduleId, itemId) => {
     if (!editValue.trim()) return;
-    setModules(modules.map((m) => {
+    const updatedModules = modules.map((m) => {
       if (m.id === moduleId) {
         return {
           ...m,
-          items: m.items.map((i) => i.id === itemId ? { ...i, title: editValue } : i)
+          items: m.items.map((i) => i.id === itemId ? { ...i, title: editValue.trim() } : i)
         };
       }
       return m;
-    }));
+    });
     setEditingItemId(null);
+    toast.success("Item saved!");
+    await persistModules(updatedModules);
   };
-  const deleteItem = (moduleId, itemId) => {
+
+  const deleteItem = (moduleId, item) => {
     setConfirmModal({
       isOpen: true,
-      title: "Delete Item",
-      message: "Are you sure you want to delete this item? This action cannot be undone.",
-      onConfirm: () => {
-        setModules(modules.map((m) => {
+      title: `Delete ${item.type ? item.type.toUpperCase() : "Item"} Confirmation`,
+      message: "This action cannot be undone. To permanently delete this item, please type its exact title below.",
+      expectedTitle: item.title,
+      onConfirm: async () => {
+        const updatedModules = modules.map((m) => {
           if (m.id === moduleId) {
-            return { ...m, items: m.items.filter((i) => i.id !== itemId) };
+            return { ...m, items: m.items.filter((i) => i.id !== item.id) };
           }
           return m;
-        }));
+        });
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        toast.success("Item deleted!");
+        await persistModules(updatedModules);
       }
     });
   };
+
   const handleAddItem = (moduleId, type) => {
     const newItem = {
       id: `i${Date.now()}`,
       type,
       title: `New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
       status: "Draft",
-      ...type === "lesson" ? { duration: "00:00" } : type === "quiz" ? { questions: 0 } : { points: 100 }
+      ...(type === "lesson"
+        ? { duration: "Not set" }
+        : type === "quiz"
+        ? { questions: 0 }
+        : type === "project"
+        ? { points: 100, maxMarks: 100 }
+        : { points: 100 })
     };
-    setModules(modules.map((m) => {
+    const updatedModules = modules.map((m) => {
       if (m.id === moduleId) {
         return { ...m, items: [...m.items, newItem] };
       }
       return m;
-    }));
+    });
+    setModules(updatedModules);
     setExpandedModules((prev) => ({ ...prev, [moduleId]: true }));
     startEditItem(newItem.id, newItem.title);
   };
@@ -224,11 +397,77 @@ const InstructorCurriculum = () => {
     }
   };
   const getItemMeta = (item) => {
-    if (item.type === "lesson") return item.duration;
-    if (item.type === "quiz") return `${item.questions} Questions`;
-    if (item.type === "assignment" || item.type === "project") return `${item.points} Points`;
+    if (item.type === "lesson") {
+      if (item.duration && item.duration !== "Not set" && item.duration !== "00:00") {
+        return typeof item.duration === "number" || (!isNaN(Number(item.duration)) && Number(item.duration) > 0)
+          ? `${item.duration} min`
+          : String(item.duration);
+      }
+      const isVideo = Boolean(item.videoUrl) || item.lessonType === "video";
+      return isVideo ? "Not set" : "Text Article";
+    }
+    if (item.type === "quiz") {
+      const count =
+        typeof item.questionCount === "number"
+          ? item.questionCount
+          : Array.isArray(item.questions)
+          ? item.questions.length
+          : Array.isArray(item.questionList)
+          ? item.questionList.length
+          : typeof item.questions === "number"
+          ? item.questions
+          : 0;
+      return `${count} Question${count === 1 ? "" : "s"}`;
+    }
+    if (item.type === "assignment" || item.type === "project") {
+      const pts = item.points ?? item.maxMarks ?? 100;
+      return `${pts} Points`;
+    }
     return "";
   };
+  const hasModules = modules.length > 0;
+  const totalModulesCount = modules.length;
+  const completedModulesCount = modules.filter((m) => Array.isArray(m.items) && m.items.length > 0).length;
+  const allModulesFilled = hasModules && completedModulesCount === totalModulesCount;
+
+  const setupSteps = [
+    {
+      label: "Basic Information",
+      done: Boolean(selectedCourse?.title && selectedCourse?.category)
+    },
+    {
+      label: "Media Assets",
+      done: Boolean(selectedCourse?.thumbnail || selectedCourse?.promoVideoUrl)
+    },
+    {
+      label: "Pricing & Level",
+      done: Boolean(selectedCourse && selectedCourse?.price !== undefined)
+    },
+    {
+      label: "Course Overview & Details",
+      done: Boolean(selectedCourse?.shortDescription || selectedCourse?.description || selectedCourse?.fullDescription)
+    },
+    {
+      label: "Curriculum Modules",
+      done: hasModules
+    },
+    {
+      label: `Module Content (${completedModulesCount}/${totalModulesCount || 1} Modules Completed)`,
+      done: allModulesFilled
+    },
+    {
+      label: "Lessons & Learning Items",
+      done: modules.some((m) => (m.items || []).some((i) => i.type === "lesson"))
+    },
+    {
+      label: "Quizzes & Tasks",
+      done: modules.some((m) => (m.items || []).some((i) => i.type === "quiz" || i.type === "assignment" || i.type === "project"))
+    }
+  ];
+
+  const completionPercent = setupSteps.length
+    ? Math.round((setupSteps.filter((step) => step.done).length / setupSteps.length) * 100)
+    : 0;
   return <div className="max-w-5xl mx-auto space-y-6 pb-8">
       
       {
@@ -239,23 +478,42 @@ const InstructorCurriculum = () => {
           <h1 className="text-3xl font-heading font-bold text-heading">Curriculum Builder</h1>
           <p className="text-body mt-1">Organize your course structure by creating modules and placeholders.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="relative group/course z-50">
-            <div className="flex items-center gap-2 bg-white border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-heading shadow-sm cursor-pointer hover:bg-gray-50 transition-colors">
-              <span>{selectedCourse}</span>
-              <ChevronDown className="w-4 h-4 text-caption ml-1 group-hover/course:rotate-180 transition-transform" />
+            <div className="flex items-center gap-2 bg-white border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm font-semibold text-heading shadow-xs cursor-pointer hover:bg-gray-50 transition-all max-w-[180px] sm:max-w-[220px]">
+              <span className="truncate">{selectedCourse?.title || "Select Course"}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-caption shrink-0 ml-auto group-hover/course:rotate-180 transition-transform" />
             </div>
             
-            <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-border rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] opacity-0 invisible group-hover/course:opacity-100 group-hover/course:visible transition-all py-2 origin-top-right">
-              {["Select Course: UI/UX Masterclass", "Advanced React Architecture"].map((course) => <button
-    key={course}
-    onClick={() => setSelectedCourse(course)}
-    className={`w-full text-left px-4 py-2.5 text-sm transition-colors cursor-pointer ${selectedCourse === course ? "bg-primary/5 text-primary font-bold" : "text-body hover:bg-gray-50 hover:text-heading"}`}
-  >
-                  {course}
+            <div className="absolute right-0 top-full mt-1.5 w-64 bg-white border border-border rounded-xl shadow-lg opacity-0 invisible group-hover/course:opacity-100 group-hover/course:visible transition-all py-1.5 origin-top-right">
+              {courses.length === 0 ? <div className="px-3.5 py-2 text-xs text-caption">No courses found</div> : courses.map((course) => <button
+                key={course.id}
+                onClick={() => handleCourseSelect(course)}
+                className={`w-full text-left px-3.5 py-2 text-xs transition-colors cursor-pointer truncate ${selectedCourseId === course.id ? "bg-primary/5 text-primary font-bold" : "text-body hover:bg-gray-50 hover:text-heading"}`}
+              >
+                  {course.title}
                 </button>)}
             </div>
           </div>
+
+          <button
+            onClick={handleSaveCurriculum}
+            disabled={saving || !selectedCourseId}
+            className="flex items-center gap-1.5 bg-white border border-border text-heading px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
+          >
+            {saving ? <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <Save className="w-3.5 h-3.5 text-gray-500" />}
+            <span>Save</span>
+          </button>
+
+          <button
+            onClick={handleSubmitForReview}
+            disabled={saving || !selectedCourseId || !allModulesFilled}
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
+            title={!allModulesFilled ? "Add content to all modules to enable review submission" : "Submit course for review"}
+          >
+            {saving ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            <span>Submit for Review</span>
+          </button>
         </div>
       </div>
 
@@ -349,8 +607,8 @@ const InstructorCurriculum = () => {
   />
                                 <button onClick={() => saveItemTitle(module.id, item.id)} className="text-primary hover:text-secondary shrink-0 cursor-pointer"><CheckCircle className="w-4 h-4" /></button>
                                 <button onClick={() => setEditingItemId(null)} className="text-caption hover:text-red-500 shrink-0 cursor-pointer"><X className="w-4 h-4" /></button>
-                              </div> : <div className="flex items-center gap-3 flex-1">
-                                <span className="text-sm font-bold text-heading">{item.title}</span>
+                              </div> : <div className="flex items-center gap-2 flex-1">
+                                <span onClick={() => startEditItem(item.id, item.title)} className="text-sm font-bold text-heading hover:text-primary cursor-pointer" title="Click to edit name">{item.title}</span>
                                 {item.status && <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${item.status === "Published" ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}`}>
                                     {item.status}
                                   </span>}
@@ -368,10 +626,13 @@ const InstructorCurriculum = () => {
   }} title="Open Workspace" className="px-2 py-1 flex items-center gap-1 bg-white border border-border shadow-sm text-xs font-bold text-heading hover:text-primary hover:border-primary/30 rounded-lg transition-colors cursor-pointer">
                                 <ExternalLink className="w-3.5 h-3.5" /> Workspace
                               </button>
+                              <button onClick={() => startEditItem(item.id, item.title)} title="Edit Name" className="p-1.5 text-caption hover:text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer">
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
                               <button onClick={() => duplicateItem(module.id, item)} title="Duplicate" className="p-1.5 text-caption hover:text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer">
                                 <Copy className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => deleteItem(module.id, item.id)} title="Delete" className="p-1.5 text-caption hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
+                              <button onClick={() => deleteItem(module.id, item)} title="Delete" className="p-1.5 text-caption hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
@@ -381,15 +642,37 @@ const InstructorCurriculum = () => {
                       {
     /* Add New Item Dropdown within Module */
   }
-                      <div className="pt-2 flex items-center gap-2">
-                        <button onClick={() => handleAddItem(module.id, "lesson")} className="flex-1 py-2 border-2 border-dashed border-border rounded-xl text-sm font-bold text-caption hover:text-orange-500 hover:border-orange-500/50 hover:bg-orange-50 transition-colors flex items-center justify-center gap-2 cursor-pointer">
-                          <PlaySquare className="w-4 h-4" /> Add Lesson
+                      <div className="pt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <button
+                          onClick={() => handleAddItem(module.id, "lesson")}
+                          className="py-2.5 px-3 border-2 border-dashed border-border rounded-xl text-xs sm:text-sm font-bold text-caption hover:text-orange-600 hover:border-orange-500/50 hover:bg-orange-50/50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <PlaySquare className="w-4 h-4 text-orange-500 shrink-0" />
+                          <span>Add Lesson</span>
                         </button>
-                        <button onClick={() => handleAddItem(module.id, "quiz")} className="flex-1 py-2 border-2 border-dashed border-border rounded-xl text-sm font-bold text-caption hover:text-blue-500 hover:border-blue-500/50 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 cursor-pointer hidden sm:flex">
-                          <CheckSquare className="w-4 h-4" /> Add Quiz
+
+                        <button
+                          onClick={() => handleAddItem(module.id, "quiz")}
+                          className="py-2.5 px-3 border-2 border-dashed border-border rounded-xl text-xs sm:text-sm font-bold text-caption hover:text-blue-600 hover:border-blue-500/50 hover:bg-blue-50/50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <CheckSquare className="w-4 h-4 text-blue-500 shrink-0" />
+                          <span>Add Quiz</span>
                         </button>
-                        <button onClick={() => handleAddItem(module.id, "assignment")} className="flex-1 py-2 border-2 border-dashed border-border rounded-xl text-sm font-bold text-caption hover:text-green-500 hover:border-green-500/50 hover:bg-green-50 transition-colors flex items-center justify-center gap-2 cursor-pointer hidden sm:flex">
-                          <ClipboardList className="w-4 h-4" /> Add Task
+
+                        <button
+                          onClick={() => handleAddItem(module.id, "assignment")}
+                          className="py-2.5 px-3 border-2 border-dashed border-border rounded-xl text-xs sm:text-sm font-bold text-caption hover:text-emerald-600 hover:border-emerald-500/50 hover:bg-emerald-50/50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <ClipboardList className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span>Add Task</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleAddItem(module.id, "project")}
+                          className="py-2.5 px-3 border-2 border-dashed border-border rounded-xl text-xs sm:text-sm font-bold text-caption hover:text-purple-600 hover:border-purple-500/50 hover:bg-purple-50/50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Briefcase className="w-4 h-4 text-purple-500 shrink-0" />
+                          <span>Add Project</span>
                         </button>
                       </div>
                     </div>}
@@ -417,74 +700,50 @@ const InstructorCurriculum = () => {
             </h3>
             
             <div className="space-y-3 mb-6">
-              {[
-    { label: "Basic Information", done: true },
-    { label: "Media", done: true },
-    { label: "Pricing", done: true },
-    { label: "Details", done: true },
-    { label: "Curriculum Modules", done: modules.length > 0 },
-    { label: "Lessons Added", done: modules.some((m) => m.items.some((i) => i.type === "lesson")) },
-    { label: "Videos Uploaded", done: false },
-    { label: "Resources Attached", done: false },
-    { label: "Quizzes Created", done: false }
-  ].map((step, idx) => <div key={idx} className="flex items-center gap-3">
+              {setupSteps.map((step, idx) => <div key={idx} className="flex items-center gap-3">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${step.done ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}>
                     <CheckCircle className="w-3.5 h-3.5" />
                   </div>
-                  <span className={`text-sm font-medium ${step.done ? "text-heading" : "text-caption"}`}>{step.label}</span>
+                <span className={`text-sm font-medium ${step.done ? "text-heading" : "text-caption"}`}>{step.label}</span>
                 </div>)}
             </div>
 
-            <div className="pt-4 border-t border-border mb-6">
+            <div className="pt-4 border-t border-border">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-bold text-heading">Overall Completion</span>
-                <span className="text-sm font-bold text-primary">60%</span>
+                <span className="text-sm font-bold text-emerald-600">{completionPercent}%</span>
               </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: "60%" }} />
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-4">
+                <div className="h-full bg-emerald-500 rounded-full transition-all duration-300" style={{ width: `${completionPercent}%` }} />
               </div>
-            </div>
 
-            <button disabled className="w-full py-3 bg-gray-200 text-gray-500 rounded-xl font-bold transition-colors cursor-not-allowed">
-              Submit for Review
-            </button>
-            <p className="text-xs text-caption mt-3 text-center">Complete all required steps to publish</p>
+              {completionPercent === 100 ? (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-bold text-emerald-700">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Course ready to submit for review</span>
+                </div>
+              ) : (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-xs font-medium text-amber-800">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Complete setup to submit for review</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
       </div>
 
-      {
-    /* Confirmation Modal */
-  }
-      {confirmModal.isOpen && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl p-6 shadow-xl w-full max-w-md border border-border animate-in fade-in zoom-in duration-200">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-red-100 text-red-500 rounded-full flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-lg font-heading font-bold text-heading mb-1">{confirmModal.title}</h3>
-                <p className="text-body text-sm mb-6 leading-relaxed">{confirmModal.message}</p>
-              </div>
-            </div>
-            
-            <div className="flex justify-end gap-3 mt-2">
-              <button
-    onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
-    className="px-5 py-2 text-sm font-bold text-caption hover:text-heading hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
-  >
-                Cancel
-              </button>
-              <button
-    onClick={confirmModal.onConfirm}
-    className="px-5 py-2 text-sm font-bold bg-red-500 text-white hover:bg-red-600 rounded-xl transition-colors shadow-sm cursor-pointer"
-  >
-                Yes, Delete
-              </button>
-            </div>
-          </div>
-        </div>}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        expectedTitle={confirmModal.expectedTitle}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        confirmText="Permanently Delete"
+        isDestructive={true}
+      />
     </div>;
 };
 var stdin_default = InstructorCurriculum;

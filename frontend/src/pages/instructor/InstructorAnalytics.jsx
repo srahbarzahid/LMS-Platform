@@ -28,7 +28,9 @@ import {
   CustomHorizontalBarChart
 } from "../../components/analytics/ChartCards";
 import ActivityTimeline from "../../components/analytics/ActivityTimeline";
-const API_BASE = "http://localhost:5000/api/instructor/analytics";
+import { instructorApi } from "../../api/instructorApi";
+import { getApiErrorMessage } from "../../api/client";
+
 const LoadingSkeleton = () => <div className="max-w-[1600px] mx-auto space-y-8 pb-16 bg-[#f9fafb] min-h-screen pt-6 px-4 sm:px-6 lg:px-8 animate-pulse">
     <div className="h-24 bg-gray-200 rounded-2xl w-full" />
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -55,38 +57,12 @@ const InstructorAnalytics = () => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        const endpoints = [
-          "overview",
-          "students",
-          "revenue",
-          "courses",
-          "learning",
-          "assessments",
-          "ratings",
-          "certificates",
-          "activities",
-          "tasks",
-          "reports"
-        ];
-        const responses = await Promise.all(
-          endpoints.map((ep) => fetch(`${API_BASE}/${ep}`).then((res) => res.json()))
-        );
-        setData({
-          overview: responses[0].data,
-          students: responses[1].data,
-          revenue: responses[2].data,
-          courses: responses[3].data,
-          learning: responses[4].data,
-          assessments: responses[5].data,
-          ratings: responses[6].data,
-          certificates: responses[7].data,
-          activities: responses[8].data,
-          tasks: responses[9].data,
-          reports: responses[10].data
-        });
+        setError(null);
+        const response = await instructorApi.getAnalytics();
+        setData(response.data || response);
       } catch (err) {
         console.error("Failed to fetch analytics:", err);
-        setError("Failed to load analytics dashboard. Make sure backend is running.");
+        setError(getApiErrorMessage(err, "Failed to load analytics dashboard."));
       } finally {
         setLoading(false);
       }
@@ -95,8 +71,12 @@ const InstructorAnalytics = () => {
   }, []);
   if (loading) return <LoadingSkeleton />;
   if (error) return <div className="text-red-500 p-8 font-bold text-center flex items-center justify-center min-h-[50vh]"><AlertTriangle className="mr-2" /> {error}</div>;
+  const sparklineData = (data.revenue?.monthly || []).map((m) => ({ value: Number(m.revenue || 0) }));
+  const sparklineUp = sparklineData.length ? sparklineData : [{ value: 0 }, { value: 5 }, { value: 10 }];
+  const sparklineDown = sparklineData.length ? sparklineData : [{ value: 10 }, { value: 5 }, { value: 0 }];
+
   const timeOptions = ["Today", "Last Week", "Last Month", "Last Year"];
-  const courseOptions = ["All Courses", ...data.courses.map((c) => c.name)];
+  const courseOptions = ["All Courses", ...(data.courses || []).map((c) => c.name)];
   return <div className="max-w-[1600px] mx-auto space-y-8 pb-16 bg-[#f9fafb] min-h-screen pt-6 px-4 sm:px-6 lg:px-8">
       
       {
@@ -207,15 +187,15 @@ const InstructorAnalytics = () => {
     /* 2. Top KPI Section */
   }
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Students" value={data.overview.totalStudents.value.toLocaleString()} icon={<Users className="w-5 h-5" />} trend={data.overview.totalStudents.growth} trendDesc="vs last month" sparklineData={sparklineUp} />
-        <StatCard title="Total Courses" value={data.overview.totalCourses.value} icon={<BookOpen className="w-5 h-5" />} trend={data.overview.totalCourses.growth} trendDesc="new this month" sparklineData={sparklineData} />
-        <StatCard title="Total Revenue" value={data.overview.totalRevenue.value} icon={<DollarSign className="w-5 h-5" />} trend={data.overview.totalRevenue.growth} trendDesc="vs last month" sparklineData={sparklineUp} />
-        <StatCard title="Average Rating" value={data.overview.averageRating.value} icon={<Star className="w-5 h-5" />} trend={data.overview.averageRating.growth} trendDesc="vs last month" sparklineData={sparklineData} />
+        <StatCard title="Total Students" value={data.overview?.totalStudents?.value?.toLocaleString() || "0"} icon={<Users className="w-5 h-5" />} trend={data.overview?.totalStudents?.growth || "0%"} trendDesc={data.overview?.totalStudents?.description || "live database"} sparklineData={sparklineUp} />
+        <StatCard title="Total Courses" value={data.overview?.totalCourses?.value || "0"} icon={<BookOpen className="w-5 h-5" />} trend={data.overview?.totalCourses?.growth || "0"} trendDesc={data.overview?.totalCourses?.description || "live database"} sparklineData={sparklineUp} />
+        <StatCard title="Total Revenue" value={data.overview?.totalRevenue?.value || "$0"} icon={<DollarSign className="w-5 h-5" />} trend={data.overview?.totalRevenue?.growth || "0%"} trendDesc={data.overview?.totalRevenue?.description || "live database"} sparklineData={sparklineUp} />
+        <StatCard title="Average Rating" value={data.overview?.averageRating?.value || "0"} icon={<Star className="w-5 h-5" />} trend={data.overview?.averageRating?.growth || "0"} trendDesc={data.overview?.averageRating?.description || "live database"} sparklineData={sparklineUp} />
         
-        <StatCard title="Course Completion" value={data.overview.courseCompletionRate.value} icon={<CheckCircle className="w-5 h-5" />} trend={data.overview.courseCompletionRate.growth} trendDesc="completion rate" sparklineData={sparklineUp} />
-        <StatCard title="Certificates Issued" value={data.overview.certificatesIssued.value.toLocaleString()} icon={<Award className="w-5 h-5" />} trend={data.overview.certificatesIssued.growth} trendDesc="issued this week" sparklineData={sparklineData} />
-        <StatCard title="Pending Reviews" value={data.overview.pendingAssignments.value} icon={<ClipboardCheck className="w-5 h-5" />} trend="-12" trendDesc="needs attention" sparklineData={sparklineDown} />
-        <StatCard title="Pending Projects" value={data.overview.pendingProjects.value} icon={<AlertTriangle className="w-5 h-5" />} trend="+8" trendDesc="awaiting grade" sparklineData={sparklineData} />
+        <StatCard title="Course Completion" value={data.overview?.courseCompletionRate?.value || "0%"} icon={<CheckCircle className="w-5 h-5" />} trend={data.overview?.courseCompletionRate?.growth || "0%"} trendDesc={data.overview?.courseCompletionRate?.description || "completion rate"} sparklineData={sparklineUp} />
+        <StatCard title="Certificates Issued" value={data.overview?.certificatesIssued?.value?.toLocaleString() || "0"} icon={<Award className="w-5 h-5" />} trend={data.overview?.certificatesIssued?.growth || "0"} trendDesc={data.overview?.certificatesIssued?.description || "issued records"} sparklineData={sparklineUp} />
+        <StatCard title="Pending Reviews" value={data.overview?.pendingAssignments?.value || 0} icon={<ClipboardCheck className="w-5 h-5" />} trend={String(data.overview?.pendingAssignments?.value || 0)} trendDesc={data.overview?.pendingAssignments?.description || "requires action"} sparklineData={sparklineDown} />
+        <StatCard title="Pending Projects" value={data.overview?.pendingProjects?.value || 0} icon={<AlertTriangle className="w-5 h-5" />} trend={String(data.overview?.pendingProjects?.value || 0)} trendDesc={data.overview?.pendingProjects?.description || "requires action"} sparklineData={sparklineUp} />
       </div>
 
       {
@@ -223,10 +203,10 @@ const InstructorAnalytics = () => {
   }
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Student Enrollment Trend">
-          <CustomLineChart data={data.students} xKey="date" yKey="enrollments" color="#ff6b00" />
+          <CustomLineChart data={data.students || []} xKey="date" yKey="enrollments" color="#ff6b00" />
         </ChartCard>
-        <ChartCard title="Revenue Analytics" action={<span className="text-sm font-semibold text-[#10B981]">{data.revenue.growth}</span>}>
-          <CustomVerticalBarChart data={data.revenue.monthly} xKey="name" yKey="revenue" color="#10B981" />
+        <ChartCard title="Revenue Analytics" action={<span className="text-sm font-semibold text-[#10B981]">{data.revenue?.growth || "0%"}</span>}>
+          <CustomVerticalBarChart data={data.revenue?.monthly || []} xKey="name" yKey="revenue" color="#10B981" />
         </ChartCard>
       </div>
 
@@ -235,13 +215,13 @@ const InstructorAnalytics = () => {
   }
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <ChartCard title="Course Completion Status">
-          <CustomDonutChart data={data.certificates} nameKey="name" dataKey="value" />
+          <CustomDonutChart data={data.certificates || []} nameKey="name" dataKey="value" />
         </ChartCard>
         <ChartCard title="Average Student Progress">
-          <CircularProgressChart value={75} label="75%" subtext="Overall Progress" color="#06B6D4" />
+          <CircularProgressChart value={Number(data.learning?.lessonsCompleted?.progress || 0)} label={`${data.learning?.lessonsCompleted?.progress || 0}%`} subtext="Overall Progress" color="#06B6D4" />
         </ChartCard>
         <ChartCard title="Average Rating Distribution">
-          <CircularProgressChart value={data.ratings.average * 20} label={data.ratings.average.toString()} subtext="Average Rating" color="#F59E0B" />
+          <CircularProgressChart value={(data.ratings?.average || 0) * 20} label={(data.ratings?.average || 0).toString()} subtext="Average Rating" color="#F59E0B" />
         </ChartCard>
       </div>
 
@@ -265,7 +245,7 @@ const InstructorAnalytics = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f3f4f6]">
-              {data.courses.map((course, i) => <tr key={i} className="hover:bg-[#f9fafb] transition-colors">
+              {(data.courses || []).length > 0 ? (data.courses || []).map((course, i) => <tr key={i} className="hover:bg-[#f9fafb] transition-colors">
                   <td className="py-4 px-6 text-sm font-semibold text-[#111827]">{course.name}</td>
                   <td className="py-4 px-6 text-sm text-right text-[#4B5563] font-medium">{course.students.toLocaleString()}</td>
                   <td className="py-4 px-6 text-sm text-right text-[#10B981] font-semibold">${course.revenue.toLocaleString()}</td>
@@ -281,7 +261,9 @@ const InstructorAnalytics = () => {
                     {course.rating} <Star className="w-3.5 h-3.5 fill-current" />
                   </td>
                   <td className={`py-4 px-6 text-sm text-right font-semibold ${course.trend.startsWith("+") ? "text-[#10B981]" : "text-[#EF4444]"}`}>{course.trend}</td>
-                </tr>)}
+                </tr>) : <tr>
+                  <td colSpan={6} className="py-8 text-center text-sm text-caption">No courses found yet.</td>
+                </tr>}
             </tbody>
           </table>
         </div>
@@ -291,10 +273,10 @@ const InstructorAnalytics = () => {
     /* 6. Fifth Section (Learning Analytics) */
   }
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <EngagementCard title="Average Learning Time" value={data.learning.averageLearningTime.value} icon={<Clock className="w-5 h-5" />} progress={data.learning.averageLearningTime.progress} color="bg-[#ff6b00]" comparison={data.learning.averageLearningTime.comparison} />
-        <EngagementCard title="Avg Session Duration" value={data.learning.averageSessionDuration.value} icon={<PlayCircle className="w-5 h-5" />} progress={data.learning.averageSessionDuration.progress} color="bg-[#06B6D4]" comparison={data.learning.averageSessionDuration.comparison} />
-        <EngagementCard title="Lessons Completed" value={data.learning.lessonsCompleted.value} icon={<CheckCircle className="w-5 h-5" />} progress={data.learning.lessonsCompleted.progress} color="bg-[#10B981]" comparison={data.learning.lessonsCompleted.comparison} />
-        <EngagementCard title="Weekly Active Students" value={data.learning.weeklyActiveStudents.value} icon={<Users className="w-5 h-5" />} progress={data.learning.weeklyActiveStudents.progress} color="bg-[#8B5CF6]" comparison={data.learning.weeklyActiveStudents.comparison} />
+        <EngagementCard title="Average Learning Time" value={data.learning?.averageLearningTime?.value || "0m"} icon={<Clock className="w-5 h-5" />} progress={data.learning?.averageLearningTime?.progress || 0} color="bg-[#ff6b00]" comparison={data.learning?.averageLearningTime?.comparison || "live database"} />
+        <EngagementCard title="Avg Session Duration" value={data.learning?.averageSessionDuration?.value || "0m"} icon={<PlayCircle className="w-5 h-5" />} progress={data.learning?.averageSessionDuration?.progress || 0} color="bg-[#06B6D4]" comparison={data.learning?.averageSessionDuration?.comparison || "live database"} />
+        <EngagementCard title="Lessons Completed" value={data.learning?.lessonsCompleted?.value || "0"} icon={<CheckCircle className="w-5 h-5" />} progress={data.learning?.lessonsCompleted?.progress || 0} color="bg-[#10B981]" comparison={data.learning?.lessonsCompleted?.comparison || "average progress"} />
+        <EngagementCard title="Weekly Active Students" value={data.learning?.weeklyActiveStudents?.value || "0"} icon={<Users className="w-5 h-5" />} progress={data.learning?.weeklyActiveStudents?.progress || 0} color="bg-[#8B5CF6]" comparison={data.learning?.weeklyActiveStudents?.comparison || "active students"} />
       </div>
 
       {
@@ -304,24 +286,26 @@ const InstructorAnalytics = () => {
         <ChartCard title="Quiz Analytics">
           <div className="relative w-full h-full flex items-center justify-center">
             <CustomDonutChart data={[
-    { name: "Pass", value: data.assessments.quizzes.pass, color: "#10B981" },
-    { name: "Fail", value: data.assessments.quizzes.fail, color: "#EF4444" }
-  ]} nameKey="name" dataKey="value" />
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none pb-6">
-              <span className="text-3xl font-bold text-[#111827]">{data.assessments.quizzes.averageScore}%</span>
-              <p className="text-sm text-[#4B5563] font-medium">Avg Score</p>
-            </div>
+              { name: "Pass", value: data.assessments?.quizzes?.pass || 0, color: "#10B981" },
+              { name: "Fail", value: data.assessments?.quizzes?.fail || 0, color: "#EF4444" }
+            ]} nameKey="name" dataKey="value" emptyText="No quiz attempts recorded yet" />
+            {((data.assessments?.quizzes?.pass || 0) + (data.assessments?.quizzes?.fail || 0)) > 0 && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none pb-6">
+                <span className="text-3xl font-bold text-[#111827]">{data.assessments?.quizzes?.averageScore || 0}%</span>
+                <p className="text-sm text-[#4B5563] font-medium">Avg Score</p>
+              </div>
+            )}
           </div>
         </ChartCard>
         
         <ChartCard title="Assignment & Project Analytics">
           <div className="flex flex-col gap-6 justify-center h-full px-2 pt-2 pb-6">
             {[
-    { label: "Graded", value: data.assessments.assignments.find((a) => a.name === "Graded").value, color: "bg-[#10B981]", max: 100 },
-    { label: "Submitted", value: data.assessments.assignments.find((a) => a.name === "Submitted").value, color: "bg-[#06B6D4]", max: 100 },
-    { label: "Pending", value: data.assessments.assignments.find((a) => a.name === "Pending").value, color: "bg-[#F59E0B]", max: 100 },
-    { label: "Resubmission Requested", value: data.assessments.assignments.find((a) => a.name === "Resubmission Requested").value, color: "bg-[#EF4444]", max: 100 }
-  ].map((item, idx) => <div key={idx} className="space-y-2">
+              { label: "Graded", value: data.assessments?.assignments?.find((a) => a.name === "Graded")?.value ?? 0, color: "bg-[#10B981]", max: 100 },
+              { label: "Submitted", value: data.assessments?.assignments?.find((a) => a.name === "Submitted")?.value ?? 0, color: "bg-[#06B6D4]", max: 100 },
+              { label: "Pending", value: data.assessments?.assignments?.find((a) => a.name === "Pending")?.value ?? 0, color: "bg-[#F59E0B]", max: 100 },
+              { label: "Resubmission Requested", value: data.assessments?.assignments?.find((a) => a.name === "Resubmission Requested")?.value ?? 0, color: "bg-[#EF4444]", max: 100 }
+            ].map((item, idx) => <div key={idx} className="space-y-2">
                 <div className="flex justify-between items-center text-sm">
                   <span className="font-semibold text-[#111827] flex items-center gap-2">
                     <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
@@ -341,12 +325,12 @@ const InstructorAnalytics = () => {
     /* 8. Seventh Section (Course Insights) */
   }
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <InsightCard icon={<TrendingUp className="text-[#10B981]" />} title="Revenue Growth" message="Enrollment increased by 18% compared to last week." />
-        <InsightCard icon={<MonitorPlay className="text-[#06B6D4]" />} title="Engagement" message="Students spend most time on 'Module 3: State Management'." />
-        <InsightCard icon={<AlertTriangle className="text-[#EF4444]" />} title="Drop-off Alert" message="Lesson 5 in React Architecture has the highest drop rate." />
-        <InsightCard icon={<ClipboardCheck className="text-[#F59E0B]" />} title="Assessment Difficulty" message="Quiz 2 has the lowest average score (42%)." />
-        <InsightCard icon={<DollarSign className="text-[#10B981]" />} title="Top Earner" message="UI/UX Design Masterclass generated the highest revenue." />
-        <InsightCard icon={<FileText className="text-[#8B5CF6]" />} title="Tasks Pending" message="15 assignments and 12 projects are waiting for review." />
+        <InsightCard icon={<TrendingUp className="text-[#10B981]" />} title="Revenue Growth" message={data.revenue?.growth ? `Revenue trend is ${data.revenue.growth} compared to last period.` : "Revenue metrics are up to date."} />
+        <InsightCard icon={<MonitorPlay className="text-[#06B6D4]" />} title="Top Course" message={`Most popular course: ${data.reports?.mostPopularCourse || "None"}.`} />
+        <InsightCard icon={<AlertTriangle className="text-[#EF4444]" />} title="Completion Status" message={`Overall course completion rate is currently at ${data.overview?.courseCompletionRate?.value || "0%"}.`} />
+        <InsightCard icon={<ClipboardCheck className="text-[#F59E0B]" />} title="Highest Rating" message={`Highest rated course: ${data.reports?.highestRatedCourse || "None"}.`} />
+        <InsightCard icon={<DollarSign className="text-[#10B981]" />} title="Top Revenue" message={`Highest revenue course: ${data.reports?.highestRevenueCourse || "None"}.`} />
+        <InsightCard icon={<FileText className="text-[#8B5CF6]" />} title="Tasks Pending" message={`${data.overview?.pendingAssignments?.value || 0} assignments and ${data.overview?.pendingProjects?.value || 0} projects waiting for review.`} />
       </div>
 
       {

@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import {
   PlaySquare,
   CheckSquare,
@@ -17,34 +18,77 @@ import {
 } from "lucide-react";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
-const mockCourseTree = [
-  {
-    id: "m1",
-    title: "Introduction to the Course",
-    lessons: [
-      { id: "i1", type: "lesson", title: "Welcome and Course Overview", status: "Published" },
-      { id: "i3", type: "quiz", title: "Environment Check Quiz", status: "Draft" }
-    ]
-  },
-  {
-    id: "m2",
-    title: "Core Concepts & Fundamentals",
-    lessons: [
-      { id: "i4", type: "lesson", title: "Understanding the Basics", status: "Draft" },
-      { id: "i5", type: "assignment", title: "First Coding Exercise", status: "Draft" },
-      { id: "i6", type: "project", title: "Mini Project: Todo App", status: "Draft" }
-    ]
-  }
-];
+import { instructorApi } from "../../api/instructorApi";
+import { getApiErrorMessage } from "../../api/client";
+
 const InstructorProjects = () => {
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
-  const [selectedCourse] = useState("Select Course: UI/UX Masterclass");
-  const [expandedModules, setExpandedModules] = useState({ "m1": true, "m2": true });
-  const [selectedItemId, setSelectedItemId] = useState("i6");
+  const [courseTree, setCourseTree] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [expandedModules, setExpandedModules] = useState({});
+  const [selectedItemId, setSelectedItemId] = useState("");
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [projectThumbnail, setProjectThumbnail] = useState(null);
-  const [briefContent, setBriefContent] = useState("In this project, you will build a full-stack Todo application using React and Node.js...");
+  const [projectTitle, setProjectTitle] = useState("");
+  const [maxMarks, setMaxMarks] = useState(100);
+  const [dueDate, setDueDate] = useState("");
+  const [briefContent, setBriefContent] = useState("");
+  const selectedCourse = useMemo(
+    () => courseTree.find((course) => course.id === selectedCourseId) || courseTree[0],
+    [courseTree, selectedCourseId]
+  );
+  const selectedProject = useMemo(() => {
+    return selectedCourse?.modules?.flatMap((module) => module.lessons.map((item) => ({ ...item, moduleId: module.id, moduleTitle: module.title }))).find((item) => item.id === selectedItemId);
+  }, [selectedCourse, selectedItemId]);
+  const selectProject = (item) => {
+    setSelectedItemId(item.id);
+    setProjectTitle(item.title || "");
+    setMaxMarks(item.maxMarks ?? item.points ?? 100);
+    setDueDate(item.dueDate ? new Date(item.dueDate).toISOString().slice(0, 10) : "");
+    setBriefContent(item.description || "");
+
+    const fileUrl = item.projectFileUrl || item.attachmentUrl || item.fileUrl;
+    if (fileUrl) {
+      setAttachedFiles([{ name: fileUrl.split("/").pop() || "project_resource.pdf", url: fileUrl, isExisting: true }]);
+    } else {
+      setAttachedFiles([]);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchWorkspace = async () => {
+      setLoading(true);
+      try {
+        const response = await instructorApi.getWorkspace();
+        const courses = Array.isArray(response.data) ? response.data : [];
+        if (!isMounted) return;
+
+        setCourseTree(courses);
+        const firstCourse = courses[0];
+        setSelectedCourseId(firstCourse?.id || "");
+        const expanded = {};
+        firstCourse?.modules?.forEach((module) => {
+          expanded[module.id] = true;
+        });
+        setExpandedModules(expanded);
+        const firstProject = firstCourse?.modules?.flatMap((module) => module.lessons.map((item) => ({ ...item, moduleId: module.id, moduleTitle: module.title }))).find((item) => item.type === "project");
+        if (firstProject) selectProject(firstProject);
+      } catch (err) {
+        toast.error(getApiErrorMessage(err, "Failed to load project workspace"));
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchWorkspace();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const toggleModule = (moduleId) => {
     setExpandedModules((prev) => ({
       ...prev,
@@ -61,6 +105,85 @@ const InstructorProjects = () => {
       setProjectThumbnail(e.target.files[0]);
     }
   };
+  const handleSaveProject = async () => {
+    if (!selectedProject) {
+      toast.error("Select a project from your curriculum first");
+      return;
+    }
+
+    try {
+      const firstFile = attachedFiles[0];
+      const projectFileUrl = firstFile?.url || firstFile?.name || null;
+      const numericMarks = Math.max(1, Number(maxMarks) || 100);
+
+      await instructorApi.updateProject(selectedProject.id, {
+        title: projectTitle,
+        description: briefContent,
+        dueDate,
+        maxMarks: numericMarks,
+        projectFileUrl,
+        attachmentUrl: projectFileUrl,
+        fileUrl: projectFileUrl,
+        courseId: selectedCourse.id,
+        moduleId: selectedProject.moduleId,
+        status: selectedProject.status || "PUBLISHED"
+      });
+
+      setCourseTree((prev) =>
+        prev.map((course) => ({
+          ...course,
+          modules: course.modules.map((module) => ({
+            ...module,
+            lessons: module.lessons.map((item) =>
+              item.id === selectedProject.id
+                ? {
+                    ...item,
+                    title: projectTitle,
+                    description: briefContent,
+                    maxMarks: numericMarks,
+                    points: numericMarks,
+                    dueDate,
+                    projectFileUrl,
+                    attachmentUrl: projectFileUrl,
+                    fileUrl: projectFileUrl
+                  }
+                : item
+            )
+          }))
+        }))
+      );
+
+      toast.success("Project saved successfully!");
+      setShowPreviewModal(true);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to save project"));
+    }
+  };
+  const handleDeleteProject = async () => {
+    if (!selectedProject) return;
+
+    try {
+      await instructorApi.deleteProject(selectedProject.id);
+      setSelectedItemId("");
+      setProjectTitle("");
+      setBriefContent("");
+      setCourseTree((prev) => prev.map((course) => ({
+        ...course,
+        modules: course.modules.map((module) => ({
+          ...module,
+          lessons: module.lessons.filter((item) => item.id !== selectedProject.id)
+        }))
+      })));
+      toast.success("Project deleted");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to delete project"));
+    }
+  };
+  if (loading) {
+    return <div className="flex py-20 items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>;
+  }
   return <div className="flex flex-col gap-6 pb-10">
       {
     /* Header */
@@ -74,7 +197,7 @@ const InstructorProjects = () => {
           <button className="flex items-center gap-2 bg-white border border-border text-heading px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-50 transition-colors cursor-pointer shadow-sm">
             <Eye className="w-4 h-4" /> Preview
           </button>
-          <button className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-secondary transition-colors cursor-pointer">
+          <button onClick={handleSaveProject} className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-secondary transition-colors cursor-pointer">
             <Save className="w-4 h-4" /> Save Project
           </button>
         </div>
@@ -88,14 +211,14 @@ const InstructorProjects = () => {
           <div className="p-4 border-b border-border bg-gray-50">
             <div className="relative group/course">
               <div className="flex items-center gap-2 bg-white border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-heading shadow-sm cursor-pointer hover:bg-gray-50 transition-all w-full justify-between">
-                <span className="truncate">{selectedCourse}</span>
+                <span className="truncate">{selectedCourse ? `Select Course: ${selectedCourse.title}` : "No courses yet"}</span>
                 <ChevronDown className="w-4 h-4 text-caption shrink-0" />
               </div>
             </div>
           </div>
           
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
-            {mockCourseTree.map((module, mIdx) => <div key={module.id} className="space-y-1.5">
+            {(selectedCourse?.modules || []).map((module, mIdx) => <div key={module.id} className="space-y-1.5">
                 <div
     className="flex items-center gap-2 px-2 py-2 cursor-pointer hover:bg-gray-50 rounded-lg group transition-colors"
     onClick={() => toggleModule(module.id)}
@@ -118,7 +241,7 @@ const InstructorProjects = () => {
     return <div
       key={item.id}
       onClick={() => {
-        if (isProject) setSelectedItemId(item.id);
+        if (isProject) selectProject({ ...item, moduleId: module.id, moduleTitle: module.title });
       }}
       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all relative
                             ${isActive ? "bg-purple-50 border border-purple-200 before:absolute before:left-[-9px] before:top-1/2 before:-translate-y-1/2 before:w-2 before:h-2 before:bg-purple-500 before:rounded-full cursor-pointer" : isProject ? "hover:bg-gray-50 border border-transparent cursor-pointer" : "opacity-50 cursor-not-allowed border border-transparent"}`}
@@ -146,11 +269,11 @@ const InstructorProjects = () => {
   }
           <div className="flex items-center gap-2 text-sm text-caption bg-white border border-border px-4 py-3 rounded-xl shadow-sm">
             <ListTree className="w-4 h-4" />
-            <span>UI/UX Masterclass</span>
+            <span>{selectedCourse?.title || "Course"}</span>
             <ChevronRight className="w-3 h-3" />
-            <span>Module 2</span>
+            <span>{selectedProject?.moduleTitle || "Module"}</span>
             <ChevronRight className="w-3 h-3" />
-            <span className="font-bold text-purple-600">Mini Project: Todo App</span>
+            <span className="font-bold text-purple-600">{projectTitle || "Select a project"}</span>
           </div>
 
           {
@@ -173,7 +296,8 @@ const InstructorProjects = () => {
                   <label className="text-sm font-bold text-heading">Project Title</label>
                   <input
     type="text"
-    defaultValue="Mini Project: Todo App"
+    value={projectTitle}
+    onChange={(e) => setProjectTitle(e.target.value)}
     className="w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-purple-500 transition-colors"
   />
                 </div>
@@ -182,7 +306,8 @@ const InstructorProjects = () => {
                   <label className="text-sm font-bold text-heading">Maximum Points</label>
                   <input
     type="number"
-    defaultValue="200"
+    value={maxMarks}
+    onChange={(e) => setMaxMarks(e.target.value)}
     className="w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-purple-500 transition-colors"
   />
                 </div>
@@ -190,8 +315,9 @@ const InstructorProjects = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-heading">Estimated Duration</label>
                   <input
-    type="text"
-    defaultValue="1 Week"
+    type="date"
+    value={dueDate}
+    onChange={(e) => setDueDate(e.target.value)}
     placeholder="e.g. 2 Hours, 1 Week"
     className="w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-purple-500 transition-colors"
   />
@@ -307,7 +433,7 @@ const InstructorProjects = () => {
                  <h3 className="font-bold text-heading text-red-600 mb-1">Delete Project</h3>
                  <p className="text-sm text-red-800/70">Once you delete this project, there is no going back. All student submissions and associated data will be lost.</p>
                </div>
-               <button className="flex shrink-0 items-center gap-2 px-5 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-100 hover:border-red-300 shadow-sm transition-colors cursor-pointer">
+               <button onClick={handleDeleteProject} className="flex shrink-0 items-center gap-2 px-5 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-100 hover:border-red-300 shadow-sm transition-colors cursor-pointer">
                  <Trash2 className="w-4 h-4" /> Delete Project
                </button>
              </div>

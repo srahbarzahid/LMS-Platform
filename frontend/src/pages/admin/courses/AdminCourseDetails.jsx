@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   BookOpen,
@@ -21,6 +20,7 @@ import {
   Briefcase
 } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { getApiErrorMessage } from "../../../api/client";
 const AdminCourseDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -36,10 +36,10 @@ const AdminCourseDetails = () => {
   const fetchCourseDetails = async () => {
     try {
       setLoading(true);
-      const courseRes = await axios.get(`http://localhost:5000/api/admin/courses/${id}`);
+      const courseRes = await apiClient.get(`/admin/courses/${id}`);
       setCourse(courseRes.data.data);
     } catch (err) {
-      toast.error("Failed to load course details");
+      toast.error(getApiErrorMessage(err, "Failed to load course details"));
       navigate("/admin/courses");
     } finally {
       setLoading(false);
@@ -87,22 +87,22 @@ const AdminCourseDetails = () => {
   const executeAction = async (action) => {
     try {
       if (action === "delete") {
-        await axios.delete(`http://localhost:5000/api/admin/courses/${id}`);
+        await apiClient.delete(`/admin/courses/${id}`);
         toast.success("Course deleted");
         navigate("/admin/courses");
       } else if (action === "feature") {
-        await axios.patch(`http://localhost:5000/api/admin/courses/${id}/featured`, { featured: !course.featured });
+        await apiClient.patch(`/admin/courses/${id}/featured`, { featured: !course.featured });
         toast.success(`Course ${course.featured ? "removed from featured" : "featured"} successfully`);
         fetchCourseDetails();
       } else if (["approve", "publish", "unpublish"].includes(action)) {
-        const newStatus = action === "approve" ? "Approved" : action === "publish" ? "Published" : "Unpublished";
-        await axios.patch(`http://localhost:5000/api/admin/courses/${id}/status`, { status: newStatus });
+        const newStatus = action === "approve" || action === "publish" ? "Published" : "Unpublished";
+        await apiClient.patch(`/admin/courses/${id}/status`, { status: newStatus });
         toast.success(`Course ${newStatus.toLowerCase()} successfully`);
         fetchCourseDetails();
       }
       setConfirmAction(null);
     } catch (err) {
-      toast.error("Action failed");
+      toast.error(getApiErrorMessage(err, "Action failed"));
     }
   };
   const submitRejection = async () => {
@@ -111,7 +111,7 @@ const AdminCourseDetails = () => {
       return;
     }
     try {
-      await axios.patch(`http://localhost:5000/api/admin/courses/${id}/status`, {
+      await apiClient.patch(`/admin/courses/${id}/status`, {
         status: "Rejected",
         reason: rejectReason
       });
@@ -119,17 +119,15 @@ const AdminCourseDetails = () => {
       setIsRejectModalOpen(false);
       fetchCourseDetails();
     } catch (err) {
-      toast.error("Failed to reject course");
+      toast.error(getApiErrorMessage(err, "Failed to reject course"));
     }
   };
   const getStatusColor = (status) => {
     switch (status) {
       case "Published":
         return "bg-emerald-50 text-emerald-600 border-emerald-200";
-      case "Pending Approval":
+      case "Pending Review":
         return "bg-yellow-50 text-yellow-600 border-yellow-200";
-      case "Approved":
-        return "bg-blue-50 text-blue-600 border-blue-200";
       case "Draft":
         return "bg-gray-100 text-gray-600 border-gray-200";
       case "Rejected":
@@ -180,7 +178,7 @@ const AdminCourseDetails = () => {
         </div>
 
         <div className="flex flex-wrap gap-3 w-full xl:w-auto xl:ml-auto">
-          {course.status === "Pending Approval" && <>
+          {course.status === "Pending Review" && <>
               <button onClick={() => handleActionClick("approve")} title="Approve Course" className="flex-1 xl:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl font-bold hover:bg-emerald-100 transition-colors">
                 <CheckCircle className="w-4 h-4" /> Approve
               </button>
@@ -189,7 +187,7 @@ const AdminCourseDetails = () => {
               </button>
             </>}
 
-          {(course.status === "Approved" || course.status === "Unpublished") && <button onClick={() => handleActionClick("publish")} title="Publish Course" className="flex-1 xl:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl font-bold hover:bg-blue-100 transition-colors">
+          {course.status === "Unpublished" && <button onClick={() => handleActionClick("publish")} title="Publish Course" className="flex-1 xl:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl font-bold hover:bg-blue-100 transition-colors">
               <Globe className="w-4 h-4" /> Publish
             </button>}
 

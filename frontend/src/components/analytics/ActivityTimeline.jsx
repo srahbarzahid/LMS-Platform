@@ -1,5 +1,13 @@
 import * as Icons from "lucide-react";
 const ActivityTimeline = ({ activities }) => {
+  if (!activities || activities.length === 0) {
+    return (
+      <div className="h-full min-h-[160px] flex flex-col items-center justify-center text-center p-6 text-[#9CA3AF]">
+        <Icons.Clock className="w-8 h-8 mb-2 opacity-40 text-[#ff6b00]" />
+        <p className="text-sm font-medium">No recent activity recorded yet</p>
+      </div>
+    );
+  }
   return <div className="h-full">
       <div className="space-y-6 pt-2">
         {activities.map((activity, index) => {

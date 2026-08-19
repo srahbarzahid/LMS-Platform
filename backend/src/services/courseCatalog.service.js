@@ -136,7 +136,8 @@ const statusLabels = {
 const levelLabels = {
   BEGINNER: "Beginner",
   INTERMEDIATE: "Intermediate",
-  ADVANCED: "Advanced"
+  ADVANCED: "Advanced",
+  ALL_LEVELS: "All Levels"
 };
 
 const normalizeStatus = (status) => statusLabels[status] || status || "Published";

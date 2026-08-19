@@ -1,5 +1,12 @@
 import { prisma } from "../prisma.js";
 import { getFallbackCourses, normalizeCourse, paginateCourses } from "../services/courseCatalog.service.js";
+import {
+  courseInclude,
+  createCourseFromInstructor,
+  formatCourse,
+  getCoursePipelineErrorMessage,
+  normalizeCourseLevel
+} from "../services/coursePipeline.service.js";
 
 const buildCourseFilters = (query) => ({
   category: query.category,
@@ -20,13 +27,13 @@ const getCourses = async (req, res) => {
 
   try {
     const where = { status: "PUBLISHED" };
-    if (filters.category) where.category = { name: { equals: filters.category, mode: "insensitive" } };
-    if (filters.level) where.level = filters.level.toUpperCase();
+    if (filters.category) where.category = { is: { name: filters.category } };
+    if (filters.level) where.level = normalizeCourseLevel(filters.level);
     if (filters.search) {
       where.OR = [
-        { title: { contains: filters.search, mode: "insensitive" } },
-        { description: { contains: filters.search, mode: "insensitive" } },
-        { shortDescription: { contains: filters.search, mode: "insensitive" } }
+        { title: { contains: filters.search } },
+        { description: { contains: filters.search } },
+        { shortDescription: { contains: filters.search } }
       ];
     }
     const safeLimit = Math.max(Number(limit) || 10, 1);
@@ -66,33 +73,9 @@ const getCourses = async (req, res) => {
 const getCourseById = async (req, res) => {
   try {
     const id = req.params.id;
-    const course = await prisma.course.findUnique({
-      where: { id },
-      include: {
-        instructor: { select: { id: true, name: true, bio: true, profileImage: true } },
-        category: true,
-        modules: {
-          orderBy: { order: "asc" },
-          include: {
-            lessons: {
-              orderBy: { order: "asc" },
-              select: {
-                id: true,
-                title: true,
-                duration: true,
-                isPreview: true,
-                order: true
-                // Do not send videoUrl unless enrolled, this will be handled in a separate endpoint or conditionally
-              }
-            }
-          }
-        },
-        reviews: {
-          include: { user: { select: { name: true, profileImage: true } } },
-          orderBy: { createdAt: "desc" },
-          take: 5
-        }
-      }
+    const course = await prisma.course.findFirst({
+      where: { id, status: "PUBLISHED" },
+      include: courseInclude
     });
     if (!course) {
       const fallbackCourse = getFallbackCourses().find((item) => item.id === req.params.id || item.slug === req.params.id);
@@ -103,7 +86,7 @@ const getCourseById = async (req, res) => {
       res.status(404).json({ success: false, message: "Course not found" });
       return;
     }
-    const data = normalizeCourse(course);
+    const data = formatCourse(course);
     res.json({ success: true, data, course: data, source: "database" });
   } catch (error) {
     const fallbackCourse = getFallbackCourses().find((item) => item.id === req.params.id || item.slug === req.params.id);
@@ -118,34 +101,18 @@ const getCourseById = async (req, res) => {
 };
 const createCourse = async (req, res) => {
   try {
-    const {
-      title,
-      slug,
-      description,
-      shortDescription,
-      categoryId,
-      level,
-      language,
-      price
-    } = req.body;
-    const course = await prisma.course.create({
-      data: {
-        title,
-        slug,
-        description,
-        shortDescription,
-        categoryId,
-        level,
-        language,
-        price: Number(price),
-        instructorId: req.user.userId,
-        status: "DRAFT"
-      }
+    const course = await createCourseFromInstructor({
+      input: req.body,
+      instructorId: req.user.userId,
+      action: req.body.action || "draft"
     });
-    res.status(201).json(course);
+    res.status(201).json({ success: true, data: formatCourse(course) });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error" });
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: getCoursePipelineErrorMessage(error, "Failed to create course")
+    });
   }
 };
 export {

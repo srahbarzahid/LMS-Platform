@@ -17,12 +17,15 @@ enum Level {
   BEGINNER
   INTERMEDIATE
   ADVANCED
+  ALL_LEVELS
 }
 
 enum CourseStatus {
   DRAFT
+  PENDING_REVIEW
   PUBLISHED
   REJECTED
+  UNPUBLISHED
 }
 
 enum PaymentStatus {
@@ -92,6 +95,7 @@ model Course {
   id               String       @id @default(uuid())
   title            String
   slug             String       @unique
+  subtitle         String?      @db.Text
   description      String       @db.Text
   shortDescription String       @db.Text
   thumbnail        String?      @db.Text
@@ -103,9 +107,18 @@ model Course {
   discountPrice    Float?
   duration         Int? // in minutes
   status           CourseStatus @default(DRAFT)
+  featured         Boolean      @default(false)
   rating           Float        @default(0)
   totalStudents    Int          @default(0)
   certificateAvail Boolean      @default(true)
+  learningOutcomes Json?
+  requirements     Json?
+  targetAudience   String?      @db.Text
+  tags             Json?
+  promoVideoUrl    String?      @db.Text
+  rejectionReason  String?      @db.Text
+  submittedAt      DateTime?
+  publishedAt      DateTime?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -210,12 +223,14 @@ model Review {
 }
 
 model Quiz {
-  id        String     @id @default(uuid())
-  courseId  String
-  moduleId  String?
-  title     String
-  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  questions Question[]
+  id               String     @id @default(uuid())
+  courseId         String
+  moduleId         String?
+  title            String
+  marksPerQuestion Int        @default(10)
+  passingMarks     Int?
+  course           Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions        Question[]
 }
 
 model Question {
@@ -228,26 +243,28 @@ model Question {
 }
 
 model Assignment {
-  id          String       @id @default(uuid())
-  courseId    String
-  moduleId    String?
-  title       String
-  description String       @db.Text
-  dueDate     DateTime?
-  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  submissions Submission[]
+  id            String       @id @default(uuid())
+  courseId      String
+  moduleId      String?
+  title         String
+  description   String       @db.Text
+  points        Float        @default(100)
+  dueDate       DateTime?
+  attachmentUrl String?      @db.Text
+  course        Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  submissions   Submission[]
 }
 
 model Submission {
-  id           String     @id @default(uuid())
+  id           String   @id @default(uuid())
   assignmentId String
   userId       String
-  fileUrl      String?    @db.Text
-  comment      String?    @db.Text
+  fileUrl      String?  @db.Text
+  comment      String?  @db.Text
   marks        Float?
-  feedback     String?    @db.Text
-  status       String     @default("SUBMITTED") // SUBMITTED, GRADED
-  createdAt    DateTime   @default(now())
+  feedback     String?  @db.Text
+  status       String   @default("SUBMITTED") // SUBMITTED, GRADED
+  createdAt    DateTime @default(now())
 
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -293,20 +310,20 @@ model CourseCompletion {
 }
 
 model Project {
-  id                String              @id @default(uuid())
+  id                String    @id @default(uuid())
   courseId          String
   moduleId          String?
   instructorId      String
   title             String
-  description       String              @db.Text
-  projectFileUrl    String?             @db.Text
+  description       String    @db.Text
+  projectFileUrl    String?   @db.Text
   projectFileType   String?
   dueDate           DateTime?
-  maxMarks          Float               @default(100)
-  allowResubmission Boolean             @default(false)
-  status            String              @default("PUBLISHED")
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  maxMarks          Float     @default(100)
+  allowResubmission Boolean   @default(false)
+  status            String    @default("PUBLISHED")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   course      Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
   instructor  User                @relation(fields: [instructorId], references: [id])
