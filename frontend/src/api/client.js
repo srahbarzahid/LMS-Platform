@@ -1,8 +1,18 @@
 import axios from "axios";
 import { getAuthToken, setAuthSession } from "../utils/auth";
 
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+    return "http://localhost:5000/api";
+  }
+  return "/api";
+};
+
 const apiClient = axios.create({
-  baseURL: "/api",
+  baseURL: getBaseUrl(),
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -28,7 +38,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const refreshRes = await axios.post("/api/auth/refresh-token", {}, { withCredentials: true });
+        const refreshRes = await axios.post(`${getBaseUrl()}/auth/refresh-token`, {}, { withCredentials: true });
         const newToken = refreshRes.data?.accessToken || refreshRes.data?.token;
         if (newToken) {
           setAuthSession(newToken);
