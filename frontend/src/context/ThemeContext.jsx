@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import apiClient, { normalizeApiPath } from "../api/client";
 
 const ThemeContext = createContext(undefined);
 
@@ -41,13 +42,8 @@ const ThemeProvider = ({ children }) => {
     try {
       const token = localStorage.getItem("token");
       if (token) {
-        await fetch("/api/instructor/settings/preferences", {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ theme: nextTheme })
+        await apiClient.patch(normalizeApiPath("/instructor/settings/preferences"), {
+          theme: nextTheme
         });
       }
     } catch (e) {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Camera, Trash2, CheckCircle2, AlertCircle, RefreshCw, Save, Mail, Phone, User, Briefcase, Edit3, X } from "lucide-react";
 import toast from "react-hot-toast";
-import apiClient, { normalizeApiPath } from "../../../../api/client";
+import apiClient, { normalizeApiPath, getApiErrorMessage } from "../../../../api/client";
 import { useTranslation } from "../../../../context/LanguageContext";
 
 const InstructorProfileTab = () => {
@@ -96,13 +96,11 @@ const InstructorProfileTab = () => {
       if (!profileImage && !previewPhoto) {
         formData.append("removePhoto", "true");
       }
-      const res = await fetch("/api/instructor/settings/profile", {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-        body: formData
+      const res = await apiClient.patch(normalizeApiPath("/instructor/settings/profile"), formData, {
+        headers: { "Content-Type": "multipart/form-data" }
       });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const data = res.data;
+      if (data.status === "success") {
         toast.success(data.message || "Profile saved successfully!");
         setIsEditing(false);
         if (data.data) {
@@ -142,7 +140,7 @@ const InstructorProfileTab = () => {
         toast.error(data.message || "Failed to save profile.");
       }
     } catch (err) {
-      toast.error("Error saving instructor profile.");
+      toast.error(getApiErrorMessage(err, "Error saving instructor profile."));
     } finally {
       setSaving(false);
     }
@@ -150,22 +148,15 @@ const InstructorProfileTab = () => {
   const handleResend = async (type) => {
     setVerifying(type);
     try {
-      const res = await fetch("/api/instructor/settings/resend-verification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify({ type })
-      });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const res = await apiClient.post(normalizeApiPath("/instructor/settings/resend-verification"), { type });
+      const data = res.data;
+      if (data.status === "success") {
         toast.success(data.message);
       } else {
         toast.error(data.message || "Failed to resend verification.");
       }
     } catch (err) {
-      toast.error("Failed to resend verification link.");
+      toast.error(getApiErrorMessage(err, "Failed to resend verification link."));
     } finally {
       setVerifying(null);
     }
@@ -173,16 +164,9 @@ const InstructorProfileTab = () => {
   const handleConfirmVerification = async (type) => {
     setVerifying(type);
     try {
-      const res = await fetch("/api/instructor/settings/confirm-verification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify({ type })
-      });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const res = await apiClient.post(normalizeApiPath("/instructor/settings/confirm-verification"), { type });
+      const data = res.data;
+      if (data.status === "success") {
         toast.success(data.message);
         if (type === "email" && pendingEmail) {
           setEmail(pendingEmail);

@@ -1,3 +1,5 @@
+import bcrypt from "bcryptjs";
+import { prisma } from "../../prisma.js";
 import { adminUsersService } from "../../services/admin/users.service.js";
 
 const adminUsersController = {
@@ -124,7 +126,22 @@ const adminUsersController = {
     }
   },
   resetUserPassword: async (req, res) => {
-    res.json({ message: "Password reset link sent" });
+    try {
+      const { id } = req.params;
+      const { password } = req.body;
+      if (!password) {
+        return res.status(400).json({ message: "New password is required" });
+      }
+      const hashedPassword = await bcrypt.hash(password, 12);
+      await prisma.user.update({
+        where: { id },
+        data: { password: hashedPassword }
+      });
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error resetting user password:", error);
+      res.status(500).json({ message: "Error resetting user password", error: error.message || error });
+    }
   }
 };
 

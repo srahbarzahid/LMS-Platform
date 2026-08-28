@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Building2, Upload, Trash2, Mail, Phone, Clock, Globe, Sun, Save, RefreshCw, BookOpen } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { normalizeApiPath, getApiErrorMessage } from "../../../../api/client";
 const SUPPORTED_LANGUAGES = [
   { code: "English", label: "English (US)" },
   { code: "Spanish", label: "Espa\xF1ol (Spanish)" },
@@ -29,10 +30,8 @@ const GeneralSettingsTab = () => {
   const fetchPlatformSettings = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/settings/platform", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      const data = await res.json();
+      const res = await apiClient.get(normalizeApiPath("/admin/settings/platform"));
+      const data = res.data;
       if (data.status === "success" && data.data) {
         setLmsName(data.data.lmsName || "LMS Platform");
         setLogoUrl(data.data.logoUrl || null);
@@ -81,13 +80,11 @@ const GeneralSettingsTab = () => {
       if (!logoUrl && !previewLogo) {
         formData.append("removeLogo", "true");
       }
-      const res = await fetch("/api/admin/settings/platform", {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-        body: formData
+      const res = await apiClient.patch(normalizeApiPath("/admin/settings/platform"), formData, {
+        headers: { "Content-Type": "multipart/form-data" }
       });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const data = res.data;
+      if (data.status === "success") {
         toast.success(data.message || "General platform settings updated!");
         if (data.data && data.data.logoUrl) {
           setLogoUrl(data.data.logoUrl);
@@ -97,7 +94,7 @@ const GeneralSettingsTab = () => {
         toast.error(data.message || "Failed to update platform settings.");
       }
     } catch (err) {
-      toast.error("An error occurred while saving platform settings.");
+      toast.error(getApiErrorMessage(err, "An error occurred while saving platform settings."));
     } finally {
       setSaving(false);
     }

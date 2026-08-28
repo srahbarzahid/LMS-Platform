@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Mail, Smartphone, BookOpen, Save, RefreshCw, FileText, Award, Clock, Megaphone } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { normalizeApiPath, getApiErrorMessage } from "../../../../api/client";
 const StudentNotificationsTab = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -18,10 +19,8 @@ const StudentNotificationsTab = () => {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/student/settings/notifications", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      const data = await res.json();
+      const res = await apiClient.get(normalizeApiPath("/student/settings/notifications"));
+      const data = res.data;
       if (data.status === "success" && data.data) {
         if (typeof data.data.emailNotifications === "boolean") {
           setEmailNotifications(data.data.emailNotifications);
@@ -59,22 +58,17 @@ const StudentNotificationsTab = () => {
       courseNotifications
     };
     try {
-      const res = await fetch("/api/student/settings/notifications", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify({ notificationPreferences: payload })
+      const res = await apiClient.patch(normalizeApiPath("/student/settings/notifications"), {
+        notificationPreferences: payload
       });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const data = res.data;
+      if (data.status === "success") {
         toast.success("Notification preferences saved successfully!");
       } else {
         toast.error(data.message || "Failed to save notifications.");
       }
     } catch (err) {
-      toast.error("Error saving notification preferences.");
+      toast.error(getApiErrorMessage(err, "Error saving notification preferences."));
     } finally {
       setSaving(false);
     }

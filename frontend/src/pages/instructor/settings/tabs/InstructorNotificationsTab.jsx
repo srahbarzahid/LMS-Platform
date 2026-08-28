@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Mail, Smartphone, Users, Save, RefreshCw, FileCheck, HelpCircle, UserPlus } from "lucide-react";
 import toast from "react-hot-toast";
-import apiClient, { normalizeApiPath } from "../../../../api/client";
+import apiClient, { normalizeApiPath, getApiErrorMessage } from "../../../../api/client";
 import { useTranslation } from "../../../../context/LanguageContext";
 
 const InstructorNotificationsTab = () => {
@@ -63,22 +63,17 @@ const InstructorNotificationsTab = () => {
       studentActivityNotifications
     };
     try {
-      const res = await fetch("/api/instructor/settings/notifications", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify({ notificationPreferences: payload })
+      const res = await apiClient.patch(normalizeApiPath("/instructor/settings/notifications"), {
+        notificationPreferences: payload
       });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const data = res.data;
+      if (data.status === "success") {
         toast.success("Notification preferences saved successfully!");
       } else {
         toast.error(data.message || "Failed to save notifications.");
       }
     } catch (err) {
-      toast.error("Error saving notification preferences.");
+      toast.error(getApiErrorMessage(err, "Error saving notification preferences."));
     } finally {
       setSaving(false);
     }

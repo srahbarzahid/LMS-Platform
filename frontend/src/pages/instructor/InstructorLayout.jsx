@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { clearAuthSession } from "../../utils/auth";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "../../context/LanguageContext";
+import apiClient, { normalizeApiPath } from "../../api/client";
 import {
   LayoutDashboard,
   Book,
@@ -63,10 +64,8 @@ const InstructorLayout = () => {
 
   const fetchProfileData = async () => {
     try {
-      const res = await fetch("/api/instructor/settings/profile", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      const data = await res.json();
+      const res = await apiClient.get(normalizeApiPath("/instructor/settings/profile"));
+      const data = res.data;
       if (data.status === "success" && data.data) {
         const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
         const updated = {
@@ -83,10 +82,8 @@ const InstructorLayout = () => {
 
   const fetchAnnouncements = async () => {
     try {
-      const res = await fetch("/api/instructor/announcements", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      const data = await res.json();
+      const res = await apiClient.get(normalizeApiPath("/instructor/announcements"));
+      const data = res.data;
       const list = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
       setAnnouncements(list.slice(0, 5));
       setUnreadCount(list.length);

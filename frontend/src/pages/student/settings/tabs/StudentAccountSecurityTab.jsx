@@ -16,6 +16,7 @@ import {
   UserX
 } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { normalizeApiPath, getApiErrorMessage } from "../../../../api/client";
 const StudentAccountSecurityTab = () => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -39,10 +40,8 @@ const StudentAccountSecurityTab = () => {
   const fetchSessions = async () => {
     setLoadingSessions(true);
     try {
-      const res = await fetch("/api/student/settings/sessions", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      const data = await res.json();
+      const res = await apiClient.get(normalizeApiPath("/student/settings/sessions"));
+      const data = res.data;
       if (data.status === "success" && data.data) {
         setSessions(data.data);
       }
@@ -72,16 +71,13 @@ const StudentAccountSecurityTab = () => {
     setShowPasswordModal(false);
     setSavingPassword(true);
     try {
-      const res = await fetch("/api/student/settings/change-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
+      const res = await apiClient.post(normalizeApiPath("/student/settings/change-password"), {
+        currentPassword,
+        newPassword,
+        confirmPassword
       });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const data = res.data;
+      if (data.status === "success") {
         toast.success(data.message || "Password changed successfully!");
         setCurrentPassword("");
         setNewPassword("");
@@ -90,7 +86,7 @@ const StudentAccountSecurityTab = () => {
         toast.error(data.message || "Failed to change password.");
       }
     } catch (err) {
-      toast.error("An error occurred while changing password.");
+      toast.error(getApiErrorMessage(err, "An error occurred while changing password."));
     } finally {
       setSavingPassword(false);
     }
@@ -98,41 +94,31 @@ const StudentAccountSecurityTab = () => {
   const handleResendVerification = async (type) => {
     setResendingType(type);
     try {
-      const res = await fetch("/api/student/settings/resend-verification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify({ type })
-      });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const res = await apiClient.post(normalizeApiPath("/student/settings/resend-verification"), { type });
+      const data = res.data;
+      if (data.status === "success") {
         toast.success(data.message);
       } else {
         toast.error(data.message || "Failed to send verification.");
       }
     } catch (err) {
-      toast.error("Failed to send verification.");
+      toast.error(getApiErrorMessage(err, "Failed to send verification."));
     } finally {
       setResendingType(null);
     }
   };
   const handleLogoutSession = async (sessionId) => {
     try {
-      const res = await fetch(`/api/student/settings/sessions/${sessionId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const res = await apiClient.delete(normalizeApiPath(`/student/settings/sessions/${sessionId}`));
+      const data = res.data;
+      if (data.status === "success") {
         toast.success("Session logged out successfully.");
         setSessions(sessions.filter((s) => s.id !== sessionId));
       } else {
         toast.error(data.message || "Failed to log out session.");
       }
     } catch (err) {
-      toast.error("Error logging out session.");
+      toast.error(getApiErrorMessage(err, "Error logging out session."));
     } finally {
       setSelectedSessionToDelete(null);
     }
@@ -140,19 +126,16 @@ const StudentAccountSecurityTab = () => {
   const handleLogoutAllOtherSessions = async () => {
     setShowLogoutAllModal(false);
     try {
-      const res = await fetch("/api/student/settings/sessions", {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const res = await apiClient.delete(normalizeApiPath("/student/settings/sessions"));
+      const data = res.data;
+      if (data.status === "success") {
         toast.success("All other sessions logged out.");
         setSessions(sessions.filter((s) => s.isCurrent));
       } else {
         toast.error(data.message || "Failed to log out all sessions.");
       }
     } catch (err) {
-      toast.error("Error logging out all sessions.");
+      toast.error(getApiErrorMessage(err, "Error logging out all sessions."));
     }
   };
   const handleDeactivateAccount = async () => {
@@ -162,23 +145,18 @@ const StudentAccountSecurityTab = () => {
     }
     setDeactivating(true);
     try {
-      const res = await fetch("/api/student/settings/deactivate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify({ confirmPassword: deactivatePassword })
+      const res = await apiClient.post(normalizeApiPath("/student/settings/deactivate"), {
+        confirmPassword: deactivatePassword
       });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const data = res.data;
+      if (data.status === "success") {
         toast.success(data.message || "Account deactivated.");
         setShowDeactivateModal(false);
       } else {
         toast.error(data.message || "Failed to deactivate account.");
       }
     } catch (err) {
-      toast.error("Error deactivating account.");
+      toast.error(getApiErrorMessage(err, "Error deactivating account."));
     } finally {
       setDeactivating(false);
     }

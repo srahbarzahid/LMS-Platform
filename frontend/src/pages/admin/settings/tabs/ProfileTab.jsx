@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Camera, Trash2, CheckCircle2, AlertCircle, RefreshCw, Save, Mail, Phone, User } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { normalizeApiPath, getApiErrorMessage } from "../../../../api/client";
 const ProfileTab = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -21,10 +22,8 @@ const ProfileTab = () => {
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/settings/profile", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      const data = await res.json();
+      const res = await apiClient.get(normalizeApiPath("/admin/settings/profile"));
+      const data = res.data;
       if (data.status === "success" && data.data) {
         setName(data.data.name || "");
         setEmail(data.data.email || "");
@@ -71,13 +70,11 @@ const ProfileTab = () => {
       if (!profileImage && !previewPhoto) {
         formData.append("removePhoto", "true");
       }
-      const res = await fetch("/api/admin/settings/profile", {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-        body: formData
+      const res = await apiClient.patch(normalizeApiPath("/admin/settings/profile"), formData, {
+        headers: { "Content-Type": "multipart/form-data" }
       });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const data = res.data;
+      if (data.status === "success") {
         toast.success(data.message || "Profile saved successfully!");
         if (data.data) {
           setPendingEmail(data.data.pendingEmail);
@@ -98,7 +95,7 @@ const ProfileTab = () => {
         toast.error(data.message || "Failed to save profile.");
       }
     } catch (err) {
-      toast.error("An error occurred while saving profile.");
+      toast.error(getApiErrorMessage(err, "An error occurred while saving profile."));
     } finally {
       setSaving(false);
     }
@@ -106,22 +103,15 @@ const ProfileTab = () => {
   const handleResend = async (type) => {
     setVerifying(type);
     try {
-      const res = await fetch("/api/admin/settings/resend-verification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify({ type })
-      });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const res = await apiClient.post(normalizeApiPath("/admin/settings/resend-verification"), { type });
+      const data = res.data;
+      if (data.status === "success") {
         toast.success(data.message);
       } else {
         toast.error(data.message || "Failed to resend verification.");
       }
     } catch (err) {
-      toast.error("Failed to resend verification link.");
+      toast.error(getApiErrorMessage(err, "Failed to resend verification link."));
     } finally {
       setVerifying(null);
     }
@@ -129,16 +119,9 @@ const ProfileTab = () => {
   const handleConfirmVerification = async (type) => {
     setVerifying(type);
     try {
-      const res = await fetch("/api/admin/settings/confirm-verification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify({ type })
-      });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const res = await apiClient.post(normalizeApiPath("/admin/settings/confirm-verification"), { type });
+      const data = res.data;
+      if (data.status === "success") {
         toast.success(data.message);
         if (type === "email" && pendingEmail) {
           setEmail(pendingEmail);

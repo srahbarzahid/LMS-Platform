@@ -146,26 +146,29 @@ const changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user) {
-      const isMatch = await bcrypt.compare(currentPassword, user.password);
-      if (!isMatch) {
-        res.status(400).json({ status: "error", message: "Current password is incorrect." });
-        return;
-      }
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await prisma.user.update({
-        where: { id: userId },
-        data: { password: hashedPassword }
-      });
+    if (!user) {
+      res.status(404).json({ status: "error", message: "User not found." });
+      return;
     }
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      res.status(400).json({ status: "error", message: "Current password is incorrect." });
+      return;
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
     res.json({
       status: "success",
       message: "Password changed successfully."
     });
   } catch (error) {
-    res.json({
-      status: "success",
-      message: "Password changed successfully."
+    console.error("Error in changePassword:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message || "Failed to change password."
     });
   }
 };
