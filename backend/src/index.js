@@ -15,6 +15,7 @@ import instructorSettingsRoutes from "./routes/instructorSettings.routes.js";
 import publicRoutes from "./routes/public.routes.js";
 import uploadRoutes from "./routes/upload.routes.js";
 import path from "path";
+import os from "os";
 dotenv.config();
 import { prisma } from "./prisma.js";
 const app = express();
@@ -35,9 +36,16 @@ app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/api/upload", uploadRoutes);
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+const staticUploadsDir = process.env.VERCEL
+  ? path.join(os.tmpdir(), "uploads")
+  : path.join(process.cwd(), "uploads");
+
+app.use("/uploads", express.static(staticUploadsDir));
+app.get("/", (req, res) => {
+  res.json({ status: "ok", message: "LMS Platform API Server is running" });
+});
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.json({ status: "ok", env: process.env.NODE_ENV || "development" });
 });
 if (!process.env.VERCEL) {
   app.listen(port, () => {
