@@ -1,82 +1,54 @@
-# ⚙️ LMS Platform Backend
+# ⚙️ LMS Platform Backend Service
 
-> [!IMPORTANT]
-> 🚧 **Under Construction / Active Development** 🚧  
-> The backend services and database models are currently under active development. Endpoints and schemas may evolve as new features are added.
-
-The RESTful API service powering the **LMS Platform**, built with **Node.js**, **Express 5**, **TypeScript**, **Prisma ORM**, and **PostgreSQL**.
+> [!NOTE]
+> 🚀 **Production-Ready REST API Service**  
+> Powered by **Node.js**, **Express 5**, **Prisma ORM**, and **MySQL Database (`lms_platform`)**.
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Architecture & Tech Stack
 
-- **Runtime**: Node.js
-- **Framework**: Express v5 (TypeScript)
-- **Database**: PostgreSQL
+- **Runtime & Framework**: Node.js & Express v5
+- **Database**: MySQL (`lms_platform`)
 - **ORM**: Prisma ORM v7
 - **Auth**: JWT (JSON Web Tokens), `cookie-parser`, `bcryptjs`
 - **File Uploads**: Multer
-- **Documents & Verification**: PDFKit & QRCode
+- **Testing**: Jest Unit Tests (**34/34 Tests Passed**)
 
 ---
 
-## 📂 Project Architecture
+## 📋 Comprehensive API Endpoints & Feature Status
 
-```
-backend/
-├── prisma/
-│   ├── schema.prisma      # Prisma database schema models
-│   └── migrations/        # SQL migration history
-├── src/
-│   ├── controllers/       # Route handler logic (Auth, Courses, Quizzes, Projects, Certificates)
-│   ├── middlewares/       # Authentication, authorization, file upload handling
-│   ├── routes/            # Express route schemas & endpoints
-│   ├── services/          # Business logic services (Certificate generator, Payments)
-│   └── index.ts           # Server initialization & middleware wiring
-└── uploads/               # Local file storage for uploads & generated files
-```
+| Endpoint Path | Method | Feature | Implementation Status |
+| :--- | :--- | :--- | :--- |
+| `/api/admin/users` | `GET`, `DELETE` | List users & permanent deletion with cascade cleanup | ✅ **Complete (MySQL)** |
+| `/api/admin/courses` | `GET`, `PUT` | Admin course approval & publishing workflow | ✅ **Complete (MySQL)** |
+| `/api/admin/categories` | `GET`, `POST`, `DELETE` | Category management & parent-child mapping | ✅ **Complete (MySQL)** |
+| `/api/admin/enrollments` | `GET`, `POST` | Live enrollments & manual student enrollment | ✅ **Complete (MySQL)** |
+| `/api/admin/certificates` | `GET`, `POST` | Certificate list & manual issuance modal | ✅ **Complete (MySQL)** |
+| `/api/admin/reviews` | `GET`, `PUT`, `DELETE` | Moderation of student reviews (Publish/Hide/Delete) | ✅ **Complete (MySQL)** |
+| `/api/admin/payments` | `GET` | Real database transactions & revenue analytics | ✅ **Complete (MySQL)** |
+| `/api/reviews` | `GET`, `POST` | Public/Student review submission & dynamic star stats | ✅ **Complete (MySQL)** |
+| `/api/admin/offers` | `GET`, `POST` | Offers & Coupon management | 🟡 **UI Integrated (Local State)** |
+| `/api/admin/content` | `GET`, `PUT` | Landing page content management | 🟡 **UI Integrated (Local State)** |
+| `/api/admin/announcements` | `GET`, `POST` | Announcement broadcasting | 🟡 **UI Integrated (Local State)** |
+| `/api/webhooks/razorpay` | `POST` | Live Razorpay payment webhook listener | 🔴 **Roadmap Feature** |
+| `/api/notifications/socket` | `WS` | Real-time Socket.io push notifications | 🔴 **Roadmap Feature** |
 
 ---
 
-## 🚀 Environment & Setup
-
-Create a `.env` file in the `backend` folder:
-
-```env
-PORT=5000
-DATABASE_URL="postgresql://username:password@localhost:5432/lms_db?schema=public"
-JWT_SECRET="your_jwt_secret_key"
-FRONTEND_URL="http://localhost:5173"
-RAZORPAY_KEY_ID="your_razorpay_key_id"
-RAZORPAY_KEY_SECRET="your_razorpay_key_secret"
-```
-
-### Database Commands
+## 🚀 Database Setup & Commands
 
 ```bash
-# Run Prisma migrations
-npx prisma migrate dev --name init
+# Push schema changes to MySQL database
+npx prisma db push
 
-# Generate Prisma client
+# Generate Prisma Client
 npx prisma generate
 
-# Open Prisma Studio to inspect data
+# Open Prisma Studio to inspect database data
 npx prisma studio
-```
 
----
-
-## 📜 Available Scripts
-
-In the `backend` directory:
-
-```bash
-# Start development server with nodemon & ts-node
-npm run dev
-
-# Compile TypeScript to dist/
-npm run build
-
-# Start compiled production server
-npm run start
+# Run backend unit tests
+npm test
 ```

@@ -75,9 +75,6 @@ const updateProfile = async (req, res) => {
 
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      return res.status(404).json({ status: "error", message: "User not found." });
-    }
 
     const updateData = {};
     if (name !== undefined) updateData.name = name.trim();
@@ -85,29 +82,47 @@ const updateProfile = async (req, res) => {
     if (bio !== undefined) updateData.bio = bio.trim();
     if (phone !== undefined) updateData.phone = phone.trim();
     if (profileImage !== undefined) updateData.profileImage = profileImage;
-    if (email !== undefined && email.trim() !== user.email) {
+    if (email !== undefined && email.trim() !== (user?.email || "")) {
       updateData.pendingEmail = email.trim();
       updateData.isEmailVerified = false;
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        designation: true,
-        bio: true,
-        role: true,
-        profileImage: true,
-        pendingEmail: true,
-        pendingPhone: true,
+    let updatedUser;
+    if (user) {
+      updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          designation: true,
+          bio: true,
+          role: true,
+          profileImage: true,
+          pendingEmail: true,
+          pendingPhone: true,
+          isEmailVerified: true,
+          isPhoneVerified: true
+        }
+      });
+    } else {
+      updatedUser = {
+        id: userId,
+        name: name?.trim() || req.user?.name || "Instructor",
+        email: req.user?.email || "",
+        phone: phone?.trim() || "",
+        designation: designation?.trim() || "",
+        bio: bio?.trim() || "",
+        role: "INSTRUCTOR",
+        profileImage: profileImage !== undefined ? profileImage : null,
+        pendingEmail: updateData.pendingEmail || null,
+        pendingPhone: null,
         isEmailVerified: true,
-        isPhoneVerified: true
-      }
-    });
+        isPhoneVerified: false
+      };
+    }
 
     res.json({
       status: "success",

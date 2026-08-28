@@ -3,11 +3,7 @@ import { Bell, Search, Filter, Trash2, Check, BookOpen, ClipboardList, CheckSqua
 import { useNavigate } from "react-router-dom";
 import apiClient from "../api/client";
 import { getAuthToken } from "../utils/auth";
-const mockFrontendNotifications = [
-  { id: "n1", title: "Assignment Graded", message: 'Your assignment "Build a Weather Station" has been graded. You received 95/100.', category: "Assignments", isRead: false, createdAt: new Date(Date.now() - 1e3 * 60 * 60 * 2), relatedUrl: "/student/assignments" },
-  { id: "n2", title: "New Course Available", message: 'A new course "Advanced Robotics" has just been published. Enroll now!', category: "Course Updates", isRead: true, createdAt: new Date(Date.now() - 1e3 * 60 * 60 * 48), relatedUrl: "/student/my-courses" },
-  { id: "n3", title: "Certificate Earned", message: "Congratulations! You have earned a certificate for IoT Fundamentals.", category: "Certificates", isRead: false, createdAt: new Date(Date.now() - 1e3 * 60 * 60 * 24 * 5), relatedUrl: "/student/certificates" }
-];
+
 const getCategoryIcon = (category) => {
   switch (category) {
     case "Course Updates":
@@ -42,45 +38,67 @@ const getCategoryColor = (category) => {
 };
 const StudentNotifications = () => {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState(mockFrontendNotifications);
+  const [notifications, setNotifications] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [readFilter, setReadFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
+
   useEffect(() => {
     let isMounted = true;
 
-    const fetchAnnouncements = async () => {
-      if (!getAuthToken()) {
-        return;
-      }
+    const fetchAllNotifications = async () => {
+      if (!getAuthToken()) return;
 
       try {
-        const res = await apiClient.get("/student/announcements");
-        const data = Array.isArray(res.data?.data) ? res.data.data : [];
+        const [notifRes, annRes] = await Promise.allSettled([
+          apiClient.get("/student/notifications"),
+          apiClient.get("/student/announcements")
+        ]);
 
-        if (res.data?.success && data.length > 0 && isMounted) {
-          const announcementNotifications = data.map((ann) => ({
-            id: ann.announcementId,
-            title: ann.title,
-            message: ann.message,
-            category: "Platform Announcements",
-            isRead: false,
-            createdAt: new Date(ann.publishDate),
-            relatedUrl: "/student/dashboard"
+        let dbNotifs = [];
+        if (notifRes.status === "fulfilled" && notifRes.value.data?.data) {
+          const raw = Array.isArray(notifRes.value.data.data) ? notifRes.value.data.data : [];
+          dbNotifs = raw.map((n) => ({
+            id: n.id,
+            title: n.title,
+            message: n.message,
+            category: n.category || "General",
+            isRead: !!n.isRead,
+            createdAt: new Date(n.createdAt),
+            relatedUrl: n.link || "/student/dashboard"
           }));
-          setNotifications((prev) => {
-            const filteredPrev = prev.filter((n) => n.category !== "Platform Announcements");
-            return [...announcementNotifications, ...filteredPrev];
+        }
+
+        let annNotifs = [];
+        if (annRes.status === "fulfilled" && annRes.value.data?.data) {
+          const rawAnn = Array.isArray(annRes.value.data.data) ? annRes.value.data.data : [];
+          annNotifs = rawAnn.map((ann) => {
+            const courseId = ann.courseId || ann.targetId;
+            const hasCourseTarget = courseId && courseId !== "ALL" && courseId !== "all";
+            const relatedUrl = hasCourseTarget ? `/student/courses/${courseId}` : "/student/dashboard";
+            return {
+              id: ann.announcementId || ann.id,
+              title: ann.title,
+              message: ann.message,
+              category: "Platform Announcements",
+              isRead: false,
+              createdAt: new Date(ann.publishDate || ann.createdAt),
+              relatedUrl,
+              course: ann.course,
+              courseId: courseId
+            };
           });
         }
-      } catch (error) {
-        if (error?.response?.status !== 401) {
-          console.error("Failed to fetch announcements for notifications:", error);
+
+        if (isMounted) {
+          setNotifications([...dbNotifs, ...annNotifs]);
         }
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
       }
     };
 
-    fetchAnnouncements();
+    fetchAllNotifications();
 
     return () => {
       isMounted = false;
@@ -206,10 +224,15 @@ const StudentNotifications = () => {
                 
                 <p className="text-body text-sm mb-3 line-clamp-2">{notification.message}</p>
                 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3">
                   <span className="text-xs font-bold text-caption uppercase tracking-wider bg-gray-50 px-2 py-1 rounded">
                     {notification.category}
                   </span>
+                  {notification.course && notification.course !== "All Courses" && (
+                    <span className="text-xs font-semibold bg-primary/10 text-primary px-2.5 py-1 rounded-md flex items-center gap-1">
+                      <BookOpen className="w-3.5 h-3.5" /> {notification.course}
+                    </span>
+                  )}
                 </div>
               </div>
 

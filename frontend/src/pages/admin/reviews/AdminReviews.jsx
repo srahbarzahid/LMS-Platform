@@ -12,9 +12,10 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
-import axios from "axios";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import apiClient, { getApiErrorMessage } from "../../../api/client";
+
 const AdminReviews = () => {
   const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
@@ -30,68 +31,72 @@ const AdminReviews = () => {
   const [ratingFilter, setRatingFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const reviewsPerPage = 10;
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, ratingFilter]);
+
   const [showHideModal, setShowHideModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedReview, setSelectedReview] = useState(null);
+
   useEffect(() => {
     fetchData();
   }, []);
+
   const fetchData = async () => {
     try {
       setIsLoading(true);
       const [reviewsRes, summaryRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/admin/reviews", { withCredentials: true }),
-        axios.get("http://localhost:5000/api/admin/reviews/summary", { withCredentials: true })
+        apiClient.get("/admin/reviews"),
+        apiClient.get("/admin/reviews/summary")
       ]);
       if (reviewsRes.data.success) {
-        setReviews(reviewsRes.data.data);
+        setReviews(reviewsRes.data.data || []);
       }
       if (summaryRes.data.success) {
         setSummary(summaryRes.data.data);
       }
     } catch (error) {
-      console.error("Failed to fetch reviews data", error);
-      toast.error("Failed to load reviews");
+      toast.error(getApiErrorMessage(error, "Failed to load reviews"));
     } finally {
       setIsLoading(false);
     }
   };
-  const handleHideUnhide = async () => {
+
+  const handleToggleStatus = async () => {
     if (!selectedReview) return;
     try {
       const action = selectedReview.status === "Published" ? "hide" : "unhide";
-      const res = await axios.put(`http://localhost:5000/api/admin/reviews/${selectedReview.reviewId}/${action}`, {}, { withCredentials: true });
+      const res = await apiClient.put(`/admin/reviews/${selectedReview.reviewId}/${action}`);
       if (res.data.success) {
         toast.success(`Review ${action === "hide" ? "hidden" : "published"} successfully`);
         fetchData();
       }
     } catch (error) {
-      console.error("Failed to change review status", error);
-      toast.error("Failed to change review status");
+      toast.error(getApiErrorMessage(error, "Failed to change review status"));
     } finally {
       setShowHideModal(false);
       setSelectedReview(null);
     }
   };
+
   const handleDelete = async () => {
     if (!selectedReview) return;
     try {
-      const res = await axios.delete(`http://localhost:5000/api/admin/reviews/${selectedReview.reviewId}`, { withCredentials: true });
+      const res = await apiClient.delete(`/admin/reviews/${selectedReview.reviewId}`);
       if (res.data.success) {
         toast.success("Review deleted permanently");
         fetchData();
       }
     } catch (error) {
-      console.error("Failed to delete review", error);
-      toast.error("Failed to delete review");
+      toast.error(getApiErrorMessage(error, "Failed to delete review"));
     } finally {
       setShowDeleteModal(false);
       setSelectedReview(null);
     }
   };
+
   const filteredReviews = reviews.filter((r) => {
     const matchesSearch = r.studentName.toLowerCase().includes(searchQuery.toLowerCase()) || r.courseName.toLowerCase().includes(searchQuery.toLowerCase()) || r.instructorName.toLowerCase().includes(searchQuery.toLowerCase()) || r.reviewDescription && r.reviewDescription.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "All" || r.status === statusFilter;

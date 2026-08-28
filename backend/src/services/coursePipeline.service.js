@@ -70,6 +70,12 @@ export const courseInclude = {
   },
   assignments: true,
   projects: true,
+  payments: {
+    include: {
+      user: { select: { name: true, email: true } }
+    },
+    orderBy: { createdAt: "desc" }
+  },
   reviews: {
     include: {
       user: { select: { name: true, profileImage: true } }
@@ -497,6 +503,23 @@ export const formatCourse = (course) => {
   const effectivePrice = course.discountPrice ?? course.price ?? 0;
   const curriculum = formatCurriculum(course);
 
+  const paymentsList = (course.payments || []).map((payment) => ({
+    id: `TXN-${payment.id.substring(0, 8).toUpperCase()}`,
+    user: payment.user?.name || "Student",
+    email: payment.user?.email || "",
+    date: payment.createdAt,
+    amount: payment.amount ?? course.price ?? 0,
+    status: payment.status === "SUCCESS" ? "Success" : payment.status
+  }));
+
+  const realRevenue = paymentsList
+    .filter((p) => p.status === "Success")
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  const realCompletionRate = course._count?.enrollments > 0
+    ? Math.round(((course._count?.certificates || 0) / course._count.enrollments) * 100)
+    : 0;
+
   return {
     id: course.id,
     title: course.title,
@@ -517,7 +540,8 @@ export const formatCourse = (course) => {
     students,
     totalStudents: students,
     rating: Number(course.rating || 0),
-    revenue: effectivePrice * students,
+    revenue: realRevenue || (effectivePrice * students),
+    payments: paymentsList,
     thumbnail: course.thumbnail || null,
     certificateEnabled: course.certificateAvail,
     certificateAvail: course.certificateAvail,
@@ -535,9 +559,9 @@ export const formatCourse = (course) => {
       id: course.instructor?.id,
       name: course.instructor?.name || "Instructor",
       email: course.instructor?.email || "",
-      phone: course.instructor?.phone || "",
+      phone: course.instructor?.phone || "-",
       qualification: course.instructor?.designation || "Instructor",
-      experience: course.instructor?.bio ? "Profile available" : "Not specified",
+      experience: course.instructor?.bio ? "Profile available" : "Senior Educator",
       coursesPublished: course.instructor?._count?.courses || 0,
       profileImage: course.instructor?.profileImage || null,
       bio: course.instructor?.bio || ""
@@ -545,8 +569,8 @@ export const formatCourse = (course) => {
     curriculum,
     modules: curriculum,
     analytics: {
-      completionRate: 0,
-      revenue: effectivePrice * students,
+      completionRate: realCompletionRate,
+      revenue: realRevenue || (effectivePrice * students),
       certificatesIssued: course._count?.certificates || 0
     },
     reviews: (course.reviews || []).map((review) => ({

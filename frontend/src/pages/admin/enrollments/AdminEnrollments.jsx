@@ -1,46 +1,54 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { BookCheck, Activity, CheckCircle, Award, TrendingUp, Search, ChevronLeft, ChevronRight, Eye, User, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { getApiErrorMessage } from "../../../api/client";
+
 const CustomDropdown = ({ value, options, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find((o) => o.value === value);
-  return <div className="relative">
+  return (
+    <div className="relative">
       <button
-    onClick={() => setIsOpen(!isOpen)}
-    className="px-4 py-2.5 bg-white border border-border rounded-xl text-heading font-medium text-sm outline-none hover:border-primary focus:border-primary flex items-center justify-between min-w-[160px] gap-2 transition-colors cursor-pointer"
-  >
+        onClick={() => setIsOpen(!isOpen)}
+        className="px-4 py-2.5 bg-white dark:bg-neutral-800 border border-border dark:border-neutral-700 rounded-xl text-heading dark:text-white font-medium text-sm outline-none hover:border-primary focus:border-primary flex items-center justify-between min-w-[160px] gap-2 transition-colors cursor-pointer"
+      >
         <span>{selectedOption ? selectedOption.label : placeholder}</span>
         <ChevronDown className={`w-4 h-4 text-caption transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>
-      
-      {isOpen && <>
+
+      {isOpen && (
+        <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full left-0 mt-2 w-full bg-white border border-border rounded-xl shadow-lg shadow-gray-200/50 z-20 py-2 min-w-[160px] overflow-hidden transform opacity-100 scale-100 transition-all origin-top">
+          <div className="absolute top-full left-0 mt-2 w-full bg-white dark:bg-neutral-800 border border-border dark:border-neutral-700 rounded-xl shadow-2xl z-20 py-2 min-w-[160px] overflow-hidden transform opacity-100 scale-100 transition-all origin-top">
             <button
-    onClick={() => {
-      onChange("");
-      setIsOpen(false);
-    }}
-    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${value === "" ? "bg-primary/5 text-primary font-bold" : "text-heading font-medium"}`}
-  >
+              onClick={() => {
+                onChange("");
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors ${value === "" ? "bg-primary/5 text-primary font-bold" : "text-heading dark:text-white font-medium"}`}
+            >
               {placeholder}
             </button>
-            {options.map((option) => <button
-    key={option.value}
-    onClick={() => {
-      onChange(option.value);
-      setIsOpen(false);
-    }}
-    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${value === option.value ? "bg-primary/5 text-primary font-bold" : "text-heading font-medium"}`}
-  >
+            {options.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors ${value === option.value ? "bg-primary/5 text-primary font-bold" : "text-heading dark:text-white font-medium"}`}
+              >
                 {option.label}
-              </button>)}
+              </button>
+            ))}
           </div>
-        </>}
-    </div>;
+        </>
+      )}
+    </div>
+  );
 };
+
 const AdminEnrollments = () => {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
@@ -54,20 +62,21 @@ const AdminEnrollments = () => {
     status: "",
     certStatus: ""
   });
+
   const fetchEnrollments = async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:5000/api/admin/enrollments?page=${page}&limit=10`;
+      let url = `/admin/enrollments?page=${page}&limit=10`;
       if (searchTerm) url += `&search=${searchTerm}`;
       if (filters.status) url += `&status=${filters.status}`;
       if (filters.certStatus) url += `&certStatus=${filters.certStatus}`;
-      const res = await axios.get(url);
-      setData(res.data.data);
-      setTotal(res.data.total);
-      setTotalPages(res.data.totalPages);
-      setStats(res.data.stats);
+      const res = await apiClient.get(url);
+      setData(res.data.data || []);
+      setTotal(res.data.total || 0);
+      setTotalPages(res.data.totalPages || 1);
+      setStats(res.data.stats || null);
     } catch (err) {
-      toast.error("Failed to fetch enrollments");
+      toast.error(getApiErrorMessage(err, "Failed to fetch enrollments"));
     } finally {
       setLoading(false);
     }

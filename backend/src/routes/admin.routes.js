@@ -26,7 +26,10 @@ import {
   getAnalyticsInsights,
   exportAnalytics
 } from "../controllers/admin/analytics.controller.js";
+import { authenticate, authorize } from "../middlewares/auth.js";
+
 const router = Router();
+router.use(authenticate, authorize(["ADMIN"]));
 router.get("/dashboard", getAdminDashboardAnalytics);
 router.get("/analytics/summary", getAnalyticsSummary);
 router.get("/analytics/users", getAnalyticsUsers);
@@ -49,6 +52,7 @@ router.post("/users/instructors", adminUsersController.createInstructor);
 router.get("/users/instructors/:id", adminUsersController.getInstructorById);
 router.get("/users/admins", adminUsersController.getAdmins);
 router.get("/users/admins/:id", adminUsersController.getAdminById);
+router.get("/users/:id", adminUsersController.getUserById);
 router.delete("/users/:id", adminUsersController.deleteUser);
 router.patch("/users/:id/status", adminUsersController.updateUserStatus);
 router.post("/users/:id/reset-password", adminUsersController.resetUserPassword);
@@ -87,6 +91,7 @@ router.put("/certificate/templates/:id", adminCertificatesController.updateTempl
 router.delete("/certificate/templates/:id", adminCertificatesController.deleteTemplate);
 router.put("/certificate/templates/:id/default", adminCertificatesController.setDefaultTemplate);
 router.get("/certificates", adminCertificatesController.getIssuedCertificates);
+router.post("/certificates/issue", adminCertificatesController.issueCertificate);
 router.get("/certificates/:id", adminCertificatesController.getIssuedCertificateById);
 router.put("/certificates/:id/revoke", adminCertificatesController.revokeCertificate);
 router.get("/certificates/:id/download", adminCertificatesController.downloadCertificate);

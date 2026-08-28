@@ -1,25 +1,27 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { ArrowLeft, User, Mail, Phone, BookOpen, Tag, CreditCard, DollarSign, FileText, Download } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { getApiErrorMessage } from "../../../api/client";
+
 const AdminPaymentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [payment, setPayment] = useState(null);
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const fetchPaymentDetails = async () => {
       try {
         const [paymentRes, invoiceRes] = await Promise.all([
-          axios.get(`http://localhost:5000/api/admin/payments/${id}`),
-          axios.get(`http://localhost:5000/api/admin/payments/${id}/invoice`)
+          apiClient.get(`/admin/payments/${id}`),
+          apiClient.get(`/admin/payments/${id}/invoice`)
         ]);
         setPayment(paymentRes.data.data);
         setInvoice(invoiceRes.data.data);
       } catch (err) {
-        toast.error("Failed to fetch payment details");
+        toast.error(getApiErrorMessage(err, "Failed to fetch payment details"));
       } finally {
         setLoading(false);
       }

@@ -1,55 +1,151 @@
-let categories = [
-  { id: "cat-1", name: "Robotics", description: "Learn about designing, building, and operating robots.", icon: "Cpu", totalCourses: 15, featured: true, createdAt: "2025-01-15T08:00:00Z" },
-  { id: "cat-2", name: "Artificial Intelligence", description: "Machine learning, neural networks, and AI fundamentals.", icon: "BrainCircuit", totalCourses: 28, featured: true, createdAt: "2025-02-10T09:30:00Z" },
-  { id: "cat-3", name: "Internet of Things", description: "Connecting physical devices to the digital world.", icon: "Wifi", totalCourses: 8, featured: false, createdAt: "2025-03-05T14:20:00Z" },
-  { id: "cat-4", name: "Embedded Systems", description: "Programming microcontrollers and hardware integration.", icon: "Microchip", totalCourses: 12, featured: true, createdAt: "2025-04-12T11:45:00Z" },
-  { id: "cat-5", name: "Frontend Development", description: "Building beautiful and interactive user interfaces.", icon: "Layout", totalCourses: 45, featured: true, createdAt: "2025-05-20T10:00:00Z" },
-  { id: "cat-6", name: "Backend Development", description: "Server-side programming, databases, and APIs.", icon: "Server", totalCourses: 32, featured: false, createdAt: "2025-06-01T13:15:00Z" },
-  { id: "cat-7", name: "Python Programming", description: "Learn Python for data science, automation, and web.", icon: "Code", totalCourses: 50, featured: true, createdAt: "2025-07-10T08:45:00Z" },
-  { id: "cat-8", name: "PCB Designing", description: "Design printed circuit boards for electronics projects.", icon: "Layers", totalCourses: 5, featured: false, createdAt: "2025-08-22T16:30:00Z" },
-  { id: "cat-9", name: "3D Printing", description: "Mastering 3D modeling and additive manufacturing.", icon: "Box", totalCourses: 0, featured: false, createdAt: "2025-09-05T09:10:00Z" },
-  { id: "cat-10", name: "CAD Designing", description: "Computer-aided design for engineering and architecture.", icon: "PenTool", totalCourses: 0, featured: false, createdAt: "2025-10-18T15:20:00Z" }
-];
+import { prisma } from "../../prisma.js";
+
 const adminCategoriesService = {
-  getAllCategories: () => categories,
-  getCategoryById: (id) => categories.find((c) => c.id === id),
-  createCategory: (data) => {
-    const newCategory = {
-      id: `cat-${Date.now()}`,
-      name: data.name || "New Category",
-      description: data.description || "",
-      icon: data.icon || "Folder",
-      totalCourses: 0,
-      featured: data.featured || false,
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+  async getAllCategories() {
+    let categories = await prisma.category.findMany({
+      include: {
+        _count: { select: { courses: true } }
+      },
+      orderBy: { name: "asc" }
+    });
+
+    if (categories.length === 0) {
+      const initial = [
+        { name: "Robotics", slug: "robotics", description: "Learn about designing, building, and operating robots.", icon: "Cpu", featured: true },
+        { name: "Artificial Intelligence", slug: "artificial-intelligence", description: "Machine learning, neural networks, and AI fundamentals.", icon: "BrainCircuit", featured: true },
+        { name: "Internet of Things", slug: "internet-of-things", description: "Connecting physical devices to the digital world.", icon: "Wifi", featured: false },
+        { name: "Embedded Systems", slug: "embedded-systems", description: "Programming microcontrollers and hardware integration.", icon: "Microchip", featured: true },
+        { name: "Frontend Development", slug: "frontend-development", description: "Building beautiful and interactive user interfaces.", icon: "Layout", featured: true },
+        { name: "Backend Development", slug: "backend-development", description: "Server-side programming, databases, and APIs.", icon: "Server", featured: false },
+        { name: "Python Programming", slug: "python-programming", description: "Learn Python for data science, automation, and web.", icon: "Code", featured: true },
+        { name: "PCB Designing", slug: "pcb-designing", description: "Design printed circuit boards for electronics projects.", icon: "Layers", featured: false },
+        { name: "3D Printing", slug: "3d-printing", description: "Mastering 3D modeling and additive manufacturing.", icon: "Box", featured: false },
+        { name: "CAD Designing", slug: "cad-designing", description: "Computer-aided design for engineering and architecture.", icon: "PenTool", featured: false }
+      ];
+
+      for (const cat of initial) {
+        await prisma.category.upsert({
+          where: { name: cat.name },
+          update: {},
+          create: cat
+        });
+      }
+
+      categories = await prisma.category.findMany({
+        include: {
+          _count: { select: { courses: true } }
+        },
+        orderBy: { name: "asc" }
+      });
+    }
+
+    return categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description || "",
+      icon: c.icon || "Folder",
+      totalCourses: c._count?.courses || 0,
+      featured: c.featured,
+      createdAt: c.createdAt
+    }));
+  },
+
+  async getCategoryById(id) {
+    const c = await prisma.category.findUnique({
+      where: { id },
+      include: { _count: { select: { courses: true } } }
+    });
+    if (!c) return null;
+    return {
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description || "",
+      icon: c.icon || "Folder",
+      totalCourses: c._count?.courses || 0,
+      featured: c.featured,
+      createdAt: c.createdAt
     };
-    categories.push(newCategory);
-    return newCategory;
   },
-  updateCategory: (id, data) => {
-    const idx = categories.findIndex((c) => c.id === id);
-    if (idx === -1) return null;
-    categories[idx] = { ...categories[idx], ...data };
-    return categories[idx];
+
+  async createCategory(data) {
+    const slug = data.name ? data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") : `cat-${Date.now()}`;
+    const c = await prisma.category.create({
+      data: {
+        name: data.name,
+        slug: slug || `cat-${Date.now()}`,
+        description: data.description || "",
+        icon: data.icon || "Folder",
+        featured: Boolean(data.featured)
+      }
+    });
+    return {
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description || "",
+      icon: c.icon || "Folder",
+      totalCourses: 0,
+      featured: c.featured,
+      createdAt: c.createdAt
+    };
   },
-  deleteCategory: (id) => {
-    const category = categories.find((c) => c.id === id);
-    if (!category) {
-      throw new Error("Category not found");
+
+  async updateCategory(id, data) {
+    const slug = data.name ? data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") : undefined;
+    const c = await prisma.category.update({
+      where: { id },
+      data: {
+        ...(data.name ? { name: data.name, slug } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.icon !== undefined ? { icon: data.icon } : {}),
+        ...(data.featured !== undefined ? { featured: Boolean(data.featured) } : {})
+      },
+      include: { _count: { select: { courses: true } } }
+    });
+    return {
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description || "",
+      icon: c.icon || "Folder",
+      totalCourses: c._count?.courses || 0,
+      featured: c.featured,
+      createdAt: c.createdAt
+    };
+  },
+
+  async deleteCategory(id) {
+    const c = await prisma.category.findUnique({
+      where: { id },
+      include: { _count: { select: { courses: true } } }
+    });
+    if (!c) throw new Error("Category not found");
+    if (c._count?.courses > 0) {
+      throw new Error("This category contains active courses. Please reassign the courses before deleting.");
     }
-    if (category.totalCourses > 0) {
-      throw new Error("This category contains courses. Please move the courses to another category before deleting.");
-    }
-    categories = categories.filter((c) => c.id !== id);
+    await prisma.category.delete({ where: { id } });
     return true;
   },
-  toggleFeatured: (id, featured) => {
-    const idx = categories.findIndex((c) => c.id === id);
-    if (idx === -1) return null;
-    categories[idx].featured = featured;
-    return categories[idx];
+
+  async toggleFeatured(id, featured) {
+    const c = await prisma.category.update({
+      where: { id },
+      data: { featured: Boolean(featured) },
+      include: { _count: { select: { courses: true } } }
+    });
+    return {
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description || "",
+      icon: c.icon || "Folder",
+      totalCourses: c._count?.courses || 0,
+      featured: c.featured,
+      createdAt: c.createdAt
+    };
   }
 };
-export {
-  adminCategoriesService
-};
+
+export { adminCategoriesService };

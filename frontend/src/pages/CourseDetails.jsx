@@ -41,43 +41,64 @@ const CourseDetails = () => {
     }
   ];
   const courseData = {
-    id: "esp32-mastering",
+    id: id || "esp32-mastering",
     title: "Mastering ESP32 for Advanced IoT Projects",
     author: "Pibots Robotics",
-    price: "\u20B91,999",
+    price: "₹1,999",
     img: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=800"
   };
-  useEffect(() => {
-    const fetchReviews = async () => {
-      try {
-        const res = await axios.get(`http://localhost:5000/api/admin/reviews?courseId=${courseData.id}`, { withCredentials: true });
-        if (res.data.success) {
-          const publishedCourseReviews = res.data.data.filter((r) => r.status === "Published");
-          setReviews(publishedCourseReviews);
+
+  const fetchReviews = async () => {
+    try {
+      const res = await apiClient.get(`/reviews?courseId=${courseData.id}`);
+      if (res.data.success) {
+        setReviews(res.data.data || []);
+        if (res.data.stats) {
+          setReviewStats(res.data.stats);
         }
-      } catch (error) {
-        console.error("Failed to load reviews", error);
       }
-    };
+    } catch (error) {
+      console.error("Failed to load reviews", error);
+    }
+  };
+
+  useEffect(() => {
     fetchReviews();
   }, [courseData.id]);
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!reviewComment.trim()) {
+      return toast.error("Please enter a review comment.");
+    }
+    try {
+      setIsSubmittingReview(true);
+      await apiClient.post("/reviews", {
+        courseId: courseData.id,
+        rating: userRating,
+        title: reviewTitle,
+        comment: reviewComment
+      });
+      toast.success("Thank you! Your review has been submitted.");
+      setReviewTitle("");
+      setReviewComment("");
+      setUserRating(5);
+      fetchReviews();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Please sign in to submit a review."));
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   const indexOfLastReview = currentPage * reviewsPerPage;
   const indexOfFirstReview = indexOfLastReview - reviewsPerPage;
   const currentReviews = reviews.slice(indexOfFirstReview, indexOfLastReview);
   const totalPages = Math.ceil(reviews.length / reviewsPerPage);
   const handleAddToCart = () => {
     addToCart(courseData);
-    setShowPopup(true);
-    setTimeout(() => setShowPopup(false), 3e3);
   };
   return <div className="bg-[#f8f9fa] min-h-screen pb-20 relative">
-      {
-    /* Toast Notification */
-  }
-      <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 z-50 ${showPopup ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8 pointer-events-none"}`}>
-        <CheckCircle2 className="w-5 h-5 text-green-400" />
-        <span className="font-medium text-sm">Course added to cart successfully</span>
-      </div>
 
       {
     /* Course Hero Section */
@@ -215,35 +236,134 @@ const CourseDetails = () => {
               </ul>
             </div>
 
-            {
-    /* Reviews Section */
-  }
-            <div className="bg-white p-8 md:p-10 rounded-2xl border border-border shadow-sm">
-              <div className="flex items-center gap-3 mb-8">
-                <MessageSquare className="w-6 h-6 text-primary" />
-                <h2 className="text-2xl font-heading font-bold text-heading">Student Reviews</h2>
+            {/* Reviews Section */}
+            <div className="bg-white p-8 md:p-10 rounded-2xl border border-border shadow-sm space-y-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <MessageSquare className="w-6 h-6 text-primary" />
+                  <h2 className="text-2xl font-heading font-bold text-heading">Student Reviews</h2>
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wider text-caption bg-gray-100 px-3 py-1 rounded-full">
+                  {reviewStats.total} {reviewStats.total === 1 ? "Review" : "Reviews"}
+                </span>
               </div>
-              
-              <div className="flex items-center gap-6 mb-8 border-b border-border pb-8">
-                <div className="text-center">
-                  <div className="text-5xl font-heading font-black text-heading mb-2">4.9</div>
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    {[1, 2, 3, 4, 5].map((star) => <Star key={star} className={`w-5 h-5 ${star <= 5 ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200"}`} />)}
+
+              {/* Rating Summary Header */}
+              <div className="flex flex-col md:flex-row items-center gap-8 border-b border-border pb-8">
+                <div className="text-center md:border-r border-border md:pr-8">
+                  <div className="text-5xl font-heading font-black text-heading mb-2">
+                    {reviewStats.averageRating > 0 ? reviewStats.averageRating.toFixed(1) : "0.0"}
                   </div>
-                  <div className="text-sm font-bold text-caption tracking-wider uppercase">Course Rating</div>
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`w-5 h-5 ${
+                          star <= Math.round(reviewStats.averageRating)
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "fill-gray-200 text-gray-200"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <div className="text-xs font-bold text-caption tracking-wider uppercase">Average Rating</div>
                 </div>
-                <div className="flex-1 space-y-2">
-                  {[5, 4, 3, 2, 1].map((star) => <div key={star} className="flex items-center gap-3 text-sm">
-                      <div className="w-12 text-body flex items-center gap-1">{star} <Star className="w-3 h-3 fill-gray-400 text-gray-400" /></div>
-                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-    className="h-full bg-yellow-400 rounded-full"
-    style={{ width: star === 5 ? "80%" : star === 4 ? "15%" : "0%" }}
-  />
+
+                <div className="flex-1 w-full space-y-2">
+                  {[5, 4, 3, 2, 1].map((star) => {
+                    const count = reviewStats.breakdown[star] || 0;
+                    const pct = reviewStats.total > 0 ? Math.round((count / reviewStats.total) * 100) : 0;
+                    return (
+                      <div key={star} className="flex items-center gap-3 text-sm">
+                        <div className="w-12 text-body flex items-center gap-1">
+                          {star} <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                        </div>
+                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-yellow-400 rounded-full transition-all duration-300"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="w-12 text-right text-caption font-mono text-xs">{pct}%</div>
                       </div>
-                      <div className="w-8 text-right text-caption font-mono">{star === 5 ? "80%" : star === 4 ? "15%" : "0%"}</div>
-                    </div>)}
+                    );
+                  })}
                 </div>
+              </div>
+
+              {/* Write A Review Form */}
+              <div className="p-6 rounded-2xl bg-gray-50 border border-border space-y-4">
+                <h3 className="text-lg font-bold text-heading flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" /> Write a Student Review
+                </h3>
+                <form onSubmit={handleSubmitReview} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-caption uppercase tracking-wider mb-2">
+                      Your Rating
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onMouseEnter={() => setHoverRating(star)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          onClick={() => setUserRating(star)}
+                          className="p-1 text-2xl transition-transform hover:scale-110 cursor-pointer"
+                        >
+                          <Star
+                            className={`w-7 h-7 ${
+                              star <= (hoverRating || userRating)
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "fill-gray-200 text-gray-300"
+                            }`}
+                          />
+                        </button>
+                      ))}
+                      <span className="ml-2 font-bold text-sm text-heading">
+                        {hoverRating || userRating} / 5 Stars
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-caption uppercase tracking-wider mb-1">
+                      Review Headline
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Incredibly detailed & easy to follow!"
+                      value={reviewTitle}
+                      onChange={(e) => setReviewTitle(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-heading text-sm outline-none focus:border-primary font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-caption uppercase tracking-wider mb-1">
+                      Detailed Review
+                    </label>
+                    <textarea
+                      placeholder="Share your detailed learning experience with other students..."
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-2.5 bg-white border border-border rounded-xl text-heading text-sm outline-none focus:border-primary font-medium resize-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={isSubmittingReview}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-sm cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                      {isSubmittingReview ? "Submitting..." : "Submit Review"}
+                    </button>
+                  </div>
+                </form>
               </div>
 
               <div className="space-y-6">

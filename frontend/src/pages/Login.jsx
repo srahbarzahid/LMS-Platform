@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, ArrowRight, ArrowLeft, Loader2, Eye, EyeOff } from "lucide-react";
 import { setAuthSession, getLastVisitedPath } from "../utils/auth";
 import apiClient, { getApiErrorMessage } from "../api/client";
+import toast from "react-hot-toast";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -11,6 +12,14 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const handleGoogleSSO = () => {
+    toast.error("Google Single Sign-On (SSO) integration is currently under construction.", {
+      id: "google-sso-under-construction",
+      duration: 4000,
+      icon: "🚧"
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -70,7 +79,8 @@ const Login = () => {
           <div className="flex justify-center mb-6">
             <button
               type="button"
-              className="w-14 h-14 flex items-center justify-center bg-white border border-border rounded-full hover:bg-gray-50 transition-all hover:shadow-md hover:-translate-y-1"
+              onClick={handleGoogleSSO}
+              className="w-14 h-14 flex items-center justify-center bg-white border border-border rounded-full hover:bg-gray-50 transition-all hover:shadow-md hover:-translate-y-1 cursor-pointer"
             >
               <svg className="w-7 h-7" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -90,17 +100,25 @@ const Login = () => {
             </div>
           </div>
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-6" onSubmit={handleSubmit} autoComplete="off">
+            {/* Dummy Hidden Trap Inputs to divert aggressive browser credential autofill */}
+            <input type="text" name="fake_username_trap" className="hidden" tabIndex={-1} autoComplete="username" />
+            <input type="password" name="fake_password_trap" className="hidden" tabIndex={-1} autoComplete="current-password" />
+
             <div>
               <label className="block text-sm font-bold text-heading mb-2">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-caption w-5 h-5" />
                 <input
                   type="email"
+                  name="lms_user_login_email_input"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-body bg-[#f8f9fa]"
                   placeholder="john@example.com"
+                  autoComplete="new-password"
+                  data-lpignore="true"
+                  data-form-type="other"
                   required
                 />
               </div>
@@ -117,10 +135,14 @@ const Login = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-caption w-5 h-5" />
                 <input
                   type={showPassword ? "text" : "password"}
+                  name="lms_user_login_password_input"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-12 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-body bg-[#f8f9fa]"
                   placeholder="••••••••"
+                  autoComplete="new-password"
+                  data-lpignore="true"
+                  data-form-type="other"
                   required
                 />
                 <button

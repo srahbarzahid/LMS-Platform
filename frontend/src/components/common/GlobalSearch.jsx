@@ -180,7 +180,14 @@ const GlobalSearch = ({ role = "student" }) => {
         <Search className="w-4 h-4 text-caption absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           ref={inputRef}
-          type="text"
+          type="search"
+          name="lms_global_search_query"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck="false"
+          data-lpignore="true"
+          data-form-type="other"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import {
   CreditCard,
   TrendingUp,
@@ -17,44 +16,53 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import apiClient, { getApiErrorMessage } from "../../../api/client";
+
 const CustomDropdown = ({ value, options, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find((o) => o.value === value);
-  return <div className="relative">
+  return (
+    <div className="relative">
       <button
-    onClick={() => setIsOpen(!isOpen)}
-    className="px-4 py-2.5 bg-white border border-border rounded-xl text-heading font-medium text-sm outline-none hover:border-primary focus:border-primary flex items-center justify-between min-w-[180px] gap-2 transition-colors cursor-pointer"
-  >
+        onClick={() => setIsOpen(!isOpen)}
+        className="px-4 py-2.5 bg-white border border-border rounded-xl text-heading font-medium text-sm outline-none hover:border-primary focus:border-primary flex items-center justify-between min-w-[180px] gap-2 transition-colors cursor-pointer"
+      >
         <span>{selectedOption ? selectedOption.label : placeholder}</span>
         <ChevronDown className={`w-4 h-4 text-caption transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>
-      
-      {isOpen && <>
+
+      {isOpen && (
+        <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
           <div className="absolute top-full left-0 mt-2 w-full bg-white border border-border rounded-xl shadow-lg shadow-gray-200/50 z-20 py-2 min-w-[180px] overflow-hidden transform opacity-100 scale-100 transition-all origin-top">
             <button
-    onClick={() => {
-      onChange("");
-      setIsOpen(false);
-    }}
-    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${value === "" ? "bg-primary/5 text-primary font-bold" : "text-heading font-medium"}`}
-  >
+              onClick={() => {
+                onChange("");
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${value === "" ? "bg-primary/5 text-primary font-bold" : "text-heading font-medium"}`}
+            >
               {placeholder}
             </button>
-            {options.map((option) => <button
-    key={option.value}
-    onClick={() => {
-      onChange(option.value);
-      setIsOpen(false);
-    }}
-    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${value === option.value ? "bg-primary/5 text-primary font-bold" : "text-heading font-medium"}`}
-  >
+            {options.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${value === option.value ? "bg-primary/5 text-primary font-bold" : "text-heading font-medium"}`}
+              >
                 {option.label}
-              </button>)}
+              </button>
+            ))}
           </div>
-        </>}
-    </div>;
+        </>
+      )}
+    </div>
+  );
 };
+
 const AdminPayments = () => {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
@@ -69,25 +77,26 @@ const AdminPayments = () => {
     status: "",
     method: ""
   });
+
   const fetchPayments = async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:5000/api/admin/payments?page=${page}&limit=10`;
+      let url = `/admin/payments?page=${page}&limit=10`;
       if (searchTerm) url += `&search=${searchTerm}`;
       if (filters.status) url += `&status=${filters.status}`;
       if (filters.method) url += `&method=${filters.method}`;
       const [res, sumRes, revRes] = await Promise.all([
-        axios.get(url),
-        axios.get("http://localhost:5000/api/admin/payments/summary"),
-        axios.get("http://localhost:5000/api/admin/payments/revenue")
+        apiClient.get(url),
+        apiClient.get("/admin/payments/summary"),
+        apiClient.get("/admin/payments/revenue")
       ]);
-      setData(res.data.data);
-      setTotal(res.data.total);
-      setTotalPages(res.data.totalPages);
-      setSummary(sumRes.data.data);
-      setRevenueData(revRes.data.data);
+      setData(res.data.data || []);
+      setTotal(res.data.total || 0);
+      setTotalPages(res.data.totalPages || 1);
+      setSummary(sumRes.data.data || null);
+      setRevenueData(revRes.data.data || []);
     } catch (err) {
-      toast.error("Failed to fetch payments data");
+      toast.error(getApiErrorMessage(err, "Failed to fetch payments data"));
     } finally {
       setLoading(false);
     }

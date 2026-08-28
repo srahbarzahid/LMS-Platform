@@ -28,6 +28,7 @@ import InstructorProjectCreate from "./pages/InstructorProjectCreate";
 import InstructorReviewSubmission from "./pages/InstructorReviewSubmission";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
 import InstructorLayout from "./pages/instructor/InstructorLayout";
 import InstructorDashboard from "./pages/instructor/InstructorDashboard";
 import InstructorCourses from "./pages/instructor/InstructorCourses";
@@ -145,6 +146,14 @@ const AppContent = () => {
                 </PublicRouteGuard>
               }
             />
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicRouteGuard>
+                  <ForgotPassword />
+                </PublicRouteGuard>
+              }
+            />
             <Route path="/cart" element={<Cart />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/verify-certificate/:certificateId" element={<VerifyCertificate />} />
@@ -234,12 +243,16 @@ const AppContent = () => {
               <Route path="categories" element={<AdminCategories />} />
               <Route path="courses" element={<AdminCourses />} />
               <Route path="students" element={<AdminStudents />} />
+              <Route path="users/students" element={<Navigate to="/admin/students" replace />} />
               <Route path="students/add" element={<AdminAddStudent />} />
               <Route path="students/:id" element={<AdminStudentDetails />} />
+              <Route path="users/students/:id" element={<AdminStudentDetails />} />
               
               <Route path="instructors" element={<AdminInstructors />} />
+              <Route path="users/instructors" element={<Navigate to="/admin/instructors" replace />} />
               <Route path="instructors/add" element={<AdminAddInstructor />} />
               <Route path="instructors/:id" element={<AdminInstructorDetails />} />
+              <Route path="users/instructors/:id" element={<AdminInstructorDetails />} />
               
               <Route path="courses" element={<AdminCourses />} />
               <Route path="course-approvals" element={<AdminCourseApprovals />} />

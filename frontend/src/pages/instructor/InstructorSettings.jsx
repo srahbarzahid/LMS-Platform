@@ -1,47 +1,52 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { useSearchParams } from "react-router-dom";
 import { User, Shield, Bell, Sliders, RefreshCw } from "lucide-react";
+import { useTranslation } from "../../context/LanguageContext";
+
 const InstructorProfileTab = lazy(() => import("./settings/tabs/InstructorProfileTab"));
 const InstructorAccountSecurityTab = lazy(() => import("./settings/tabs/InstructorAccountSecurityTab"));
 const InstructorNotificationsTab = lazy(() => import("./settings/tabs/InstructorNotificationsTab"));
 const InstructorPreferencesTab = lazy(() => import("./settings/tabs/InstructorPreferencesTab"));
+
 const InstructorSettings = () => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") || "profile";
   const [activeTab, setActiveTab] = useState(initialTab);
+
   useEffect(() => {
     const tabParam = searchParams.get("tab");
     if (tabParam && ["profile", "security", "notifications", "preferences"].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSearchParams({ tab });
   };
+
   const tabs = [
-    { key: "profile", label: "Profile", icon: <User className="w-5 h-5" />, description: "Identity, designation & bio" },
-    { key: "security", label: "Account & Security", icon: <Shield className="w-5 h-5" />, description: "Password & active sessions" },
-    { key: "notifications", label: "Notifications", icon: <Bell className="w-5 h-5" />, description: "Email & student activity alerts" },
-    { key: "preferences", label: "Preferences", icon: <Sliders className="w-5 h-5" />, description: "Language & theme mode" }
+    { key: "profile", label: t("settings.profile", "Profile"), icon: <User className="w-5 h-5" />, description: "Identity, designation & bio" },
+    { key: "security", label: t("settings.security", "Account & Security"), icon: <Shield className="w-5 h-5" />, description: "Password & active sessions" },
+    { key: "notifications", label: t("settings.notifications", "Notifications"), icon: <Bell className="w-5 h-5" />, description: "Email & student activity alerts" },
+    { key: "preferences", label: t("settings.preferences", "Preferences"), icon: <Sliders className="w-5 h-5" />, description: "Language & theme mode" }
   ];
-  return <div className="max-w-6xl mx-auto space-y-6 pb-12">
-      {
-    /* Page Header */
-  }
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+      {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-heading font-bold text-heading">Instructor Settings</h1>
-        <p className="text-body mt-1">Manage your public instructor profile, account security, student activity alerts, and UI preferences.</p>
+        <h1 className="text-3xl font-heading font-bold text-heading">{t("nav.settings", "Instructor Settings")}</h1>
+        <p className="text-body mt-1">{t("settings.subtitle", "Manage your public instructor profile, account security, student activity alerts, and UI preferences.")}</p>
       </div>
 
-      {
-    /* Main Container Card */
-  }
+      {/* Main Container Card */}
       <div className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden flex flex-col md:flex-row h-[calc(100vh-11rem)] min-h-[550px]">
         {/* Left Side Tab Navigation (Fixed) */}
         <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-gray-50/50 dark:bg-neutral-900/50 p-6 shrink-0 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-none h-full">
           <div className="hidden md:block text-[11px] font-semibold tracking-[1px] uppercase text-caption mb-2 px-3">
-            Settings Menu
+            {t("nav.settings", "Settings Menu")}
           </div>
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
@@ -81,9 +86,8 @@ const InstructorSettings = () => {
           </Suspense>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
-var stdin_default = InstructorSettings;
-export {
-  stdin_default as default
-};
+
+export default InstructorSettings;

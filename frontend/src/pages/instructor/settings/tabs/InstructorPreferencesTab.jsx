@@ -1,16 +1,20 @@
 import { useState, useEffect } from "react";
 import { Globe, Sun, Moon, Monitor, Save, RefreshCw, Check } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { normalizeApiPath } from "../../../../api/client";
+import { useLanguage } from "../../../../context/LanguageContext";
+
 const SUPPORTED_LANGUAGES = [
   { code: "English", label: "English (US)" },
-  { code: "Spanish", label: "Espa\xF1ol (Spanish)" },
-  { code: "French", label: "Fran\xE7ais (French)" },
+  { code: "Spanish", label: "Español (Spanish)" },
+  { code: "French", label: "Français (French)" },
   { code: "German", label: "Deutsch (German)" },
-  { code: "Hindi", label: "\u0939\u093F\u0928\u094D\u0926\u0940 (Hindi)" },
-  { code: "Arabic", label: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629 (Arabic)" },
-  { code: "Chinese", label: "\u4E2D\u6587 (Mandarin Chinese)" },
-  { code: "Japanese", label: "\u65E5\u672C\u8A9E (Japanese)" }
+  { code: "Hindi", label: "हिन्दी (Hindi)" },
+  { code: "Arabic", label: "العربية (Arabic)" },
+  { code: "Chinese", label: "中文 (Mandarin Chinese)" },
+  { code: "Japanese", label: "日本語 (Japanese)" }
 ];
+
 const applyThemeToDOM = (selectedTheme) => {
   localStorage.setItem("app_theme", selectedTheme);
   const isDark = selectedTheme === "Dark" || (selectedTheme === "System" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -22,17 +26,13 @@ const applyThemeToDOM = (selectedTheme) => {
   window.dispatchEvent(new Event("themeChange"));
 };
 
-const applyLanguageToDOM = (selectedLanguage) => {
-  localStorage.setItem("app_language", selectedLanguage);
-  document.documentElement.setAttribute("lang", (selectedLanguage || "en").toLowerCase());
-  window.dispatchEvent(new Event("languageChange"));
-};
-
 const InstructorPreferencesTab = () => {
+  const { language, changeLanguage, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [preferredLanguage, setPreferredLanguage] = useState("English");
+  const [preferredLanguage, setPreferredLanguage] = useState(language || "English");
   const [theme, setTheme] = useState("System");
+
   useEffect(() => {
     fetchPreferences();
 
@@ -44,17 +44,16 @@ const InstructorPreferencesTab = () => {
     window.addEventListener("themeChange", handleGlobalThemeChange);
     return () => window.removeEventListener("themeChange", handleGlobalThemeChange);
   }, []);
+
   const fetchPreferences = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/instructor/settings/preferences", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      const data = await res.json();
+      const res = await apiClient.get(normalizeApiPath("/instructor/settings/preferences"));
+      const data = res.data;
       if (data.status === "success" && data.data) {
         if (data.data.preferredLanguage) {
           setPreferredLanguage(data.data.preferredLanguage);
-          applyLanguageToDOM(data.data.preferredLanguage);
+          changeLanguage(data.data.preferredLanguage);
         }
         if (data.data.theme) {
           setTheme(data.data.theme);
@@ -67,23 +66,30 @@ const InstructorPreferencesTab = () => {
       setLoading(false);
     }
   };
+
+  const handleLanguageSelect = (lang) => {
+    setPreferredLanguage(lang);
+    changeLanguage(lang);
+  };
+
+  const handleThemeSelect = (selectedTheme) => {
+    setTheme(selectedTheme);
+    applyThemeToDOM(selectedTheme);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch("/api/instructor/settings/preferences", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify({ preferredLanguage, theme })
+      const res = await apiClient.patch(normalizeApiPath("/instructor/settings/preferences"), {
+        preferredLanguage,
+        theme
       });
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      const data = res.data;
+      if (data.status === "success") {
         applyThemeToDOM(theme);
-        applyLanguageToDOM(preferredLanguage);
-        toast.success("Display preferences saved successfully!");
+        changeLanguage(preferredLanguage);
+        toast.success(t("pref.savedSuccess", "Display preferences saved successfully!"));
       } else {
         toast.error(data.message || "Failed to save preferences.");
       }
@@ -100,96 +106,97 @@ const InstructorPreferencesTab = () => {
   }
   return <form onSubmit={handleSave} className="space-y-8 animate-fade-in">
       <div>
-        <h3 className="font-bold text-heading text-lg mb-1">Preferences</h3>
-        <p className="text-sm text-caption">Customize your instructor dashboard language and theme mode.</p>
+        <h3 className="font-bold text-heading text-lg mb-1">{t("pref.title", "Preferences")}</h3>
+        <p className="text-sm text-caption">{t("pref.subtitle", "Customize your instructor dashboard language and theme mode.")}</p>
       </div>
 
-      {
-    /* Language Selector */
-  }
       <div className="bg-white rounded-2xl border border-border p-6 space-y-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
             <Globe className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="font-bold text-heading text-base">Interface Language</h4>
-            <p className="text-xs text-caption">Select your preferred language for instructor tools and navigation.</p>
+            <h4 className="font-bold text-heading text-base">{t("pref.interfaceLanguage", "Interface Language")}</h4>
+            <p className="text-xs text-caption">{t("pref.languageDesc", "Select your preferred language for instructor tools and navigation.")}</p>
           </div>
         </div>
 
         <div className="max-w-md pt-2">
           <select
-    value={preferredLanguage}
-    onChange={(e) => setPreferredLanguage(e.target.value)}
-    className="w-full px-4 py-3 bg-gray-50 border border-border rounded-xl text-sm font-medium text-heading focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all cursor-pointer"
-  >
-            {SUPPORTED_LANGUAGES.map((lang) => <option key={lang.code} value={lang.code}>
+            value={preferredLanguage}
+            onChange={(e) => handleLanguageSelect(e.target.value)}
+            className="w-full px-4 py-3 bg-gray-50 border border-border rounded-xl text-sm font-medium text-heading focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all cursor-pointer"
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
                 {lang.label}
-              </option>)}
+              </option>
+            ))}
           </select>
         </div>
       </div>
 
-      {
-    /* Theme Preference */
-  }
+      {/* Theme Preference */}
       <div className="bg-white rounded-2xl border border-border p-6 space-y-4 shadow-sm">
         <div>
-          <h4 className="font-bold text-heading text-base mb-1">Theme Preference</h4>
-          <p className="text-xs text-caption">Select how the instructor portal looks to you.</p>
+          <h4 className="font-bold text-heading text-base mb-1">{t("pref.themeTitle", "Theme Preference")}</h4>
+          <p className="text-xs text-caption">{t("pref.themeDesc", "Select how the instructor portal looks to you.")}</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-          {
-    /* Light Mode */
-  }
+          {/* Light Mode */}
           <div
-    onClick={() => setTheme("Light")}
-    className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between h-36 ${theme === "Light" ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-gray-300 bg-gray-50/50"}`}
-  >
+            onClick={() => handleThemeSelect("Light")}
+            className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between h-36 ${
+              theme === "Light" ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-gray-300 bg-gray-50/50"
+            }`}
+          >
             <div className="flex justify-between items-start">
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
                 <Sun className="w-5 h-5" />
               </div>
-              {theme === "Light" && <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
+              {theme === "Light" && (
+                <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
                   <Check className="w-3.5 h-3.5" />
-                </div>}
+                </div>
+              )}
             </div>
             <div>
-              <div className="font-bold text-heading text-sm">Light Mode</div>
-              <div className="text-xs text-caption mt-0.5">Bright, clear layout.</div>
+              <div className="font-bold text-heading text-sm">{t("pref.lightMode", "Light Mode")}</div>
+              <div className="text-xs text-caption mt-0.5">{t("pref.lightDesc", "Bright, clear layout.")}</div>
             </div>
           </div>
 
-          {
-    /* Dark Mode */
-  }
+          {/* Dark Mode */}
           <div
-    onClick={() => setTheme("Dark")}
-    className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between h-36 ${theme === "Dark" ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-gray-300 bg-gray-50/50"}`}
-  >
+            onClick={() => handleThemeSelect("Dark")}
+            className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between h-36 ${
+              theme === "Dark" ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-gray-300 bg-gray-50/50"
+            }`}
+          >
             <div className="flex justify-between items-start">
               <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-gray-200">
                 <Moon className="w-5 h-5" />
               </div>
-              {theme === "Dark" && <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
+              {theme === "Dark" && (
+                <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
                   <Check className="w-3.5 h-3.5" />
-                </div>}
+                </div>
+              )}
             </div>
             <div>
-              <div className="font-bold text-heading text-sm">Dark Mode</div>
-              <div className="text-xs text-caption mt-0.5">Easy on the eyes at night.</div>
+              <div className="font-bold text-heading text-sm">{t("pref.darkMode", "Dark Mode")}</div>
+              <div className="text-xs text-caption mt-0.5">{t("pref.darkDesc", "Easy on the eyes at night.")}</div>
             </div>
           </div>
 
-          {
-    /* System Mode */
-  }
+          {/* System Mode */}
           <div
-    onClick={() => setTheme("System")}
-    className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between h-36 ${theme === "System" ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-gray-300 bg-gray-50/50"}`}
-  >
+            onClick={() => handleThemeSelect("System")}
+            className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between h-36 ${
+              theme === "System" ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-gray-300 bg-gray-50/50"
+            }`}
+          >
             <div className="flex justify-between items-start">
               <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600">
                 <Monitor className="w-5 h-5" />
@@ -199,8 +206,8 @@ const InstructorPreferencesTab = () => {
                 </div>}
             </div>
             <div>
-              <div className="font-bold text-heading text-sm">System Default</div>
-              <div className="text-xs text-caption mt-0.5">Syncs with system settings.</div>
+              <div className="font-bold text-heading text-sm">{t("pref.systemMode", "System Default")}</div>
+              <div className="text-xs text-caption mt-0.5">{t("pref.systemDesc", "Syncs with system settings.")}</div>
             </div>
           </div>
         </div>
@@ -212,7 +219,7 @@ const InstructorPreferencesTab = () => {
     disabled={saving}
     className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md hover:bg-secondary transition-colors disabled:opacity-50"
   >
-          {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Preferences
+          {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {t("pref.saveButton", "Save Preferences")}
         </button>
       </div>
     </form>;

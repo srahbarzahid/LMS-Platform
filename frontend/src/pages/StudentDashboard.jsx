@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { clearAuthSession } from "../utils/auth";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -23,50 +23,128 @@ import {
 } from "lucide-react";
 import ThemeToggle from "../components/common/ThemeToggle";
 import GlobalSearch from "../components/common/GlobalSearch";
+import apiClient from "../api/client";
+import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
+import { useTranslation } from "../context/LanguageContext";
+
 const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { cart } = useCart();
+  const { wishlist } = useWishlist();
+
+  const cartCount = Array.isArray(cart) ? cart.length : 0;
+  const wishlistCount = Array.isArray(wishlist) ? wishlist.length : 0;
   const isPlayerRoute = location.pathname.includes("/course-player");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const userName = user.name || "John Doe";
-  const userEmail = user.email || "john.doe@example.com";
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("user") || "{}"));
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchFreshProfile = async () => {
+      try {
+        const res = await apiClient.get("/student/profile");
+        if (res.data?.success && res.data?.data && isMounted) {
+          const freshUser = {
+            ...JSON.parse(localStorage.getItem("user") || "{}"),
+            ...res.data.data,
+            profileImage: res.data.data.profileImage || res.data.data.avatarUrl || null
+          };
+          localStorage.setItem("user", JSON.stringify(freshUser));
+          setUser(freshUser);
+        }
+      } catch (err) {
+        // Fallback to localStorage user
+      }
+    };
+
+    const fetchUnreadCount = async () => {
+      try {
+        const [notifRes, annRes] = await Promise.allSettled([
+          apiClient.get("/student/notifications"),
+          apiClient.get("/student/announcements")
+        ]);
+
+        let dbUnread = 0;
+        if (notifRes.status === "fulfilled" && notifRes.value.data?.data) {
+          const raw = Array.isArray(notifRes.value.data.data) ? notifRes.value.data.data : [];
+          dbUnread = raw.filter((n) => !n.isRead).length;
+        }
+
+        let annUnread = 0;
+        if (annRes.status === "fulfilled" && annRes.value.data?.data) {
+          const rawAnn = Array.isArray(annRes.value.data.data) ? annRes.value.data.data : [];
+          annUnread = rawAnn.length;
+        }
+
+        if (isMounted) {
+          setUnreadNotifCount(dbUnread + annUnread);
+        }
+      } catch (err) {
+        // Fallback
+      }
+    };
+
+    fetchFreshProfile();
+    fetchUnreadCount();
+
+    const syncUser = () => {
+      setUser(JSON.parse(localStorage.getItem("user") || "{}"));
+    };
+    window.addEventListener("profileUpdate", syncUser);
+    window.addEventListener("storage", syncUser);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("profileUpdate", syncUser);
+      window.removeEventListener("storage", syncUser);
+    };
+  }, [location.pathname]);
+
+  const userName = user.name || "Student";
+  const userEmail = user.email || "";
   const userInitials = userName
     .split(" ")
     .map((n) => n[0])
+    .filter(Boolean)
     .join("")
     .substring(0, 2)
-    .toUpperCase();
+    .toUpperCase() || "ST";
+  const profilePic = user.profileImage || user.avatar || user.avatarUrl || null;
+
   const handleLogout = () => {
     clearAuthSession();
     navigate("/login", { replace: true });
   };
   const sidebarGroups = [
     {
-      title: "LEARNING",
+      title: t("nav.learning", "LEARNING"),
       links: [
-        { name: "Dashboard", path: "/student/dashboard", icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
-        { name: "Browse Courses", path: "/student/browse-courses", icon: <Compass className="w-[18px] h-[18px]" /> },
-        { name: "My Courses", path: "/student/my-courses", icon: <Book className="w-[18px] h-[18px]" /> },
-        { name: "Wishlist", path: "/student/wishlist", icon: <Heart className="w-[18px] h-[18px]" /> },
-        { name: "Cart", path: "/student/cart", icon: <ShoppingBag className="w-[18px] h-[18px]" /> }
+        { name: t("nav.dashboard", "Dashboard"), path: "/student/dashboard", icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
+        { name: t("nav.browseCourses", "Browse Courses"), path: "/student/browse-courses", icon: <Compass className="w-[18px] h-[18px]" /> },
+        { name: t("nav.myCourses", "My Courses"), path: "/student/my-courses", icon: <Book className="w-[18px] h-[18px]" /> },
+        { name: t("nav.wishlist", "Wishlist"), path: "/student/wishlist", icon: <Heart className="w-[18px] h-[18px]" />, count: wishlistCount },
+        { name: t("nav.cart", "Cart"), path: "/student/cart", icon: <ShoppingBag className="w-[18px] h-[18px]" />, count: cartCount }
       ]
     },
     {
-      title: "ASSESSMENTS",
+      title: t("nav.assessmentsGroup", "ASSESSMENTS"),
       links: [
-        { name: "Assignments", path: "/student/assignments", icon: <ClipboardList className="w-[18px] h-[18px]" /> },
-        { name: "Quizzes", path: "/student/quizzes", icon: <CheckSquare className="w-[18px] h-[18px]" /> },
-        { name: "Projects", path: "/student/projects", icon: <Briefcase className="w-[18px] h-[18px]" /> },
-        { name: "Certificates", path: "/student/certificates", icon: <Award className="w-[18px] h-[18px]" /> }
+        { name: t("nav.assignments", "Assignments"), path: "/student/assignments", icon: <ClipboardList className="w-[18px] h-[18px]" /> },
+        { name: t("nav.quizzes", "Quizzes"), path: "/student/quizzes", icon: <CheckSquare className="w-[18px] h-[18px]" /> },
+        { name: t("nav.projects", "Projects"), path: "/student/projects", icon: <Briefcase className="w-[18px] h-[18px]" /> },
+        { name: t("nav.certificates", "Certificates"), path: "/student/certificates", icon: <Award className="w-[18px] h-[18px]" /> }
       ]
     },
     {
-      title: "ACCOUNT",
+      title: t("nav.accountGroup", "ACCOUNT"),
       links: [
-        { name: "Notifications", path: "/student/notifications", icon: <Bell className="w-[18px] h-[18px]" /> },
-        { name: "Settings", path: "/student/settings", icon: <Settings className="w-[18px] h-[18px]" /> }
+        { name: t("nav.notifications", "Notifications"), path: "/student/notifications", icon: <Bell className="w-[18px] h-[18px]" />, count: unreadNotifCount },
+        { name: t("nav.settings", "Settings"), path: "/student/settings", icon: <Settings className="w-[18px] h-[18px]" /> }
       ]
     }
   ];
@@ -90,13 +168,19 @@ const StudentDashboard = () => {
     /* User Profile Block (Fixed) */
   }
         <div className={`flex items-center mb-6 mt-6 shrink-0 transition-all duration-300 ${isSidebarCollapsed ? "justify-center" : "gap-3 px-5"}`}>
-          <div className="w-10 h-10 rounded-full overflow-hidden bg-accent flex items-center justify-center shrink-0 text-primary font-bold text-lg">
-            JD
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-accent flex items-center justify-center shrink-0 text-primary font-bold text-sm border border-border">
+            {profilePic ? (
+              <img src={profilePic} alt={userName} className="w-full h-full object-cover" />
+            ) : (
+              userInitials
+            )}
           </div>
-          {!isSidebarCollapsed && <div className="overflow-hidden">
-              <div className="text-[15px] font-semibold text-heading truncate leading-tight">John Doe</div>
+          {!isSidebarCollapsed && (
+            <div className="overflow-hidden">
+              <div className="text-[15px] font-semibold text-heading truncate leading-tight">{userName}</div>
               <div className="text-xs font-normal text-caption truncate mt-0.5">Student</div>
-            </div>}
+            </div>
+          )}
         </div>
 
         {
@@ -117,22 +201,37 @@ const StudentDashboard = () => {
   }
                 <ul className="space-y-0.5">
                   {group.links.map((link) => {
-    const isActive = location.pathname === link.path;
-    return <li key={link.name}>
+                    const isActive = location.pathname === link.path;
+                    const hasCount = typeof link.count === "number" && link.count > 0;
+                    return <li key={link.name}>
                         <Link
-      to={link.path}
-      title={isSidebarCollapsed ? link.name : void 0}
-      className={`flex items-center h-9 rounded-lg transition-all duration-200 cursor-pointer ${isSidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"} ${isActive ? "bg-primary/10 text-primary" : "text-body hover:bg-gray-50 hover:text-heading"}`}
-    >
-                          <div className={`shrink-0 ${isActive ? "text-primary" : ""}`}>
+                          to={link.path}
+                          title={isSidebarCollapsed ? link.name : void 0}
+                          className={`flex items-center h-9 rounded-lg transition-all duration-200 cursor-pointer ${isSidebarCollapsed ? "justify-center px-0 relative" : "gap-3 px-3"} ${isActive ? "bg-primary/10 text-primary font-bold" : "text-body hover:bg-gray-50 hover:text-heading"}`}
+                        >
+                          <div className={`shrink-0 relative ${isActive ? "text-primary" : ""}`}>
                             {link.icon}
+                            {isSidebarCollapsed && hasCount && (
+                              <span className="absolute -top-1.5 -right-2 bg-primary text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                                {link.count > 99 ? "99+" : link.count}
+                              </span>
+                            )}
                           </div>
-                          {!isSidebarCollapsed && <span className={`text-[14px] leading-[20px] truncate ${isActive ? "font-bold" : "font-medium"}`}>
-                              {link.name}
-                            </span>}
+                          {!isSidebarCollapsed && (
+                            <>
+                              <span className={`text-[14px] leading-[20px] truncate ${isActive ? "font-bold" : "font-medium"}`}>
+                                {link.name}
+                              </span>
+                              {hasCount && (
+                                <span className="ml-auto bg-primary text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-xs shrink-0">
+                                  {link.count > 99 ? "99+" : link.count}
+                                </span>
+                              )}
+                            </>
+                          )}
                         </Link>
                       </li>;
-  })}
+                  })}
                 </ul>
               </div>)}
           </nav>
@@ -148,7 +247,7 @@ const StudentDashboard = () => {
             className={`w-full flex items-center h-9 rounded-lg transition-all duration-200 cursor-pointer text-red-600 hover:bg-red-50 ${isSidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"}`}
           >
             <div className="shrink-0"><LogOut className="w-5 h-5" /></div>
-            {!isSidebarCollapsed && <span className="text-[14px] leading-[20px] font-medium truncate">Logout</span>}
+            {!isSidebarCollapsed && <span className="text-[14px] leading-[20px] font-medium truncate">{t("nav.logout", "Logout")}</span>}
           </button>
         </div>
       </aside>
@@ -180,12 +279,18 @@ const StudentDashboard = () => {
                 className="relative p-2 text-body hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-xl transition-colors cursor-pointer"
               >
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+                {unreadNotifCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                )}
               </Link>
               <div className="w-px h-6 bg-border hidden sm:block" />
               <Link to="/student/settings" className="flex items-center gap-3 cursor-pointer group">
-                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 text-primary font-bold text-sm group-hover:bg-primary group-hover:text-white transition-colors">
-                  {userInitials}
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 text-primary font-bold text-sm">
+                  {profilePic ? (
+                    <img src={profilePic} alt={userName} className="w-full h-full object-cover" />
+                  ) : (
+                    userInitials
+                  )}
                 </div>
                 <div className="hidden sm:block text-left">
                   <div className="text-sm font-bold text-heading leading-tight truncate max-w-[120px] md:max-w-none">{userName}</div>
@@ -218,8 +323,12 @@ const StudentDashboard = () => {
             {/* Header with Close button */}
             <div className="p-5 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-base">
-                  {userInitials}
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 text-primary font-bold text-sm">
+                  {profilePic ? (
+                    <img src={profilePic} alt={userName} className="w-full h-full object-cover" />
+                  ) : (
+                    userInitials
+                  )}
                 </div>
                 <div>
                   <div className="text-sm font-bold text-heading truncate leading-tight">{userName}</div>
@@ -245,6 +354,7 @@ const StudentDashboard = () => {
                     <ul className="space-y-1">
                       {group.links.map((link) => {
                         const isActive = location.pathname === link.path;
+                        const hasCount = typeof link.count === "number" && link.count > 0;
                         return (
                           <li key={link.name}>
                             <Link
@@ -258,6 +368,11 @@ const StudentDashboard = () => {
                             >
                               <div className={isActive ? "text-primary" : ""}>{link.icon}</div>
                               <span>{link.name}</span>
+                              {hasCount && (
+                                <span className="ml-auto bg-primary text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+                                  {link.count > 99 ? "99+" : link.count}
+                                </span>
+                              )}
                             </Link>
                           </li>
                         );

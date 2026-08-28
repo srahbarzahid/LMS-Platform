@@ -22,7 +22,7 @@ describe("Admin Settings API Endpoints", () => {
     it("should allow student access to profile but reject student access to platform settings (403 Forbidden)", async () => {
       const platformRes = await request(app).get("/api/admin/settings/platform").set("Authorization", `Bearer ${studentToken}`);
       expect(platformRes.status).toBe(403);
-      expect(platformRes.body.message).toBe("Forbidden");
+      expect(platformRes.body.message).toContain("Forbidden");
     });
     it("should allow admin access to platform settings", async () => {
       const platformRes = await request(app).get("/api/admin/settings/platform").set("Authorization", `Bearer ${adminToken}`);

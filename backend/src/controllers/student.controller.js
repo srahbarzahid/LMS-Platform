@@ -1,32 +1,70 @@
 import * as StudentService from "../services/student.service.js";
-const getStudents = async (req, res) => {
-  const students = await StudentService.getStudentsMock("instructor_1");
-  res.json(students);
+
+const getStudentOverview = async (req, res) => {
+  try {
+    const data = await StudentService.getStudentOverview(req.user.id);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Failed to fetch student overview:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch student overview" });
+  }
 };
-const getStudentDetails = async (req, res) => {
-  const details = await StudentService.getStudentDetailsMock(req.params.studentId);
-  res.json(details);
+
+const getStudentMyCourses = async (req, res) => {
+  try {
+    const data = await StudentService.getStudentMyCourses(req.user.id);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Failed to fetch student courses:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch student courses" });
+  }
 };
-const getStudentProgress = async (req, res) => {
-  const progress = await StudentService.getStudentProgressMock(req.params.studentId);
-  res.json(progress);
+
+const getStudentAssignments = async (req, res) => {
+  try {
+    const data = await StudentService.getStudentAssignments(req.user.id);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Failed to fetch student assignments:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch student assignments" });
+  }
 };
-const getStudentSubmissions = async (req, res) => {
-  res.json({ assignments: [], projects: [], quizzes: [] });
+
+const getStudentQuizzes = async (req, res) => {
+  try {
+    const data = await StudentService.getStudentQuizzes(req.user.id);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Failed to fetch student quizzes:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch student quizzes" });
+  }
 };
-const getStudentActivity = async (req, res) => {
-  const activity = await StudentService.getStudentActivityMock(req.params.studentId);
-  res.json(activity);
+
+const getStudentProjects = async (req, res) => {
+  try {
+    const data = await StudentService.getStudentProjects(req.user.id);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Failed to fetch student projects:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch student projects" });
+  }
 };
-const getStudentReviews = async (req, res) => {
-  const reviews = await StudentService.getStudentReviewsMock(req.params.studentId);
-  res.json(reviews);
+
+const getStudentCertificates = async (req, res) => {
+  try {
+    const data = await StudentService.getStudentCertificates(req.user.id);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Failed to fetch student certificates:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch student certificates" });
+  }
 };
+
 export {
-  getStudentActivity,
-  getStudentDetails,
-  getStudentProgress,
-  getStudentReviews,
-  getStudentSubmissions,
-  getStudents
+  getStudentOverview,
+  getStudentMyCourses,
+  getStudentAssignments,
+  getStudentQuizzes,
+  getStudentProjects,
+  getStudentCertificates
 };

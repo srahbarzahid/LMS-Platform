@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, User, ArrowRight, Phone, ArrowLeft, Loader2, Eye, EyeOff } from "lucide-react";
 import { setAuthSession, getLastVisitedPath } from "../utils/auth";
 import apiClient, { getApiErrorMessage } from "../api/client";
+import toast from "react-hot-toast";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -15,6 +16,14 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const handleGoogleSSO = () => {
+    toast.error("Google Single Sign-On (SSO) integration is currently under construction.", {
+      id: "google-sso-under-construction",
+      duration: 4000,
+      icon: "🚧"
+    });
+  };
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -78,7 +87,8 @@ const Register = () => {
           <div className="flex justify-center mb-6">
             <button
               type="button"
-              className="w-14 h-14 flex items-center justify-center bg-white border border-border rounded-full hover:bg-gray-50 transition-all hover:shadow-md hover:-translate-y-1"
+              onClick={handleGoogleSSO}
+              className="w-14 h-14 flex items-center justify-center bg-white border border-border rounded-full hover:bg-gray-50 transition-all hover:shadow-md hover:-translate-y-1 cursor-pointer"
             >
               <svg className="w-7 h-7" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

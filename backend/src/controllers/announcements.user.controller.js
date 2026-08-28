@@ -1,17 +1,31 @@
 import { prisma } from "../prisma.js";
 import { mockAnnouncements } from "./admin/announcements.controller.js";
 
-const formatNotificationAnnouncement = (notification) => ({
-  announcementId: notification.relatedId || notification.id,
-  title: notification.title,
-  type: notification.type || "Announcement",
-  message: notification.message,
-  audience: "Course Students",
-  priority: "Medium",
-  status: "Published",
-  publishDate: notification.createdAt,
-  createdAt: notification.createdAt
-});
+const parseAnnouncementRelatedType = (relatedType = "") => {
+  if (!relatedType) return "ALL";
+  const parts = relatedType.split(":");
+  return parts.length > 1 ? parts[1] : "ALL";
+};
+
+const formatNotificationAnnouncement = (notification, coursesById = new Map()) => {
+  const courseId = parseAnnouncementRelatedType(notification.relatedType);
+  const course = courseId === "ALL" ? null : coursesById.get(courseId);
+
+  return {
+    id: notification.relatedId || notification.id,
+    announcementId: notification.relatedId || notification.id,
+    title: notification.title,
+    type: notification.type || "Course Announcement",
+    message: notification.message,
+    audience: course ? "Course Students" : "All Students",
+    course: course?.title || (courseId !== "ALL" ? courseId : "All Courses"),
+    courseId: course?.id || (courseId !== "ALL" ? courseId : ""),
+    priority: "Medium",
+    status: "Published",
+    publishDate: notification.createdAt,
+    createdAt: notification.createdAt
+  };
+};
 
 const isPublishedAndCurrent = (announcement) => {
   const isPublished = announcement.status === "Published";
@@ -33,7 +47,27 @@ const userAnnouncementsController = {
             orderBy: { createdAt: "desc" }
           })
         : [];
-      const sortedAnnouncements = courseAnnouncements.map(formatNotificationAnnouncement);
+
+      const courseIds = [
+        ...new Set(
+          courseAnnouncements
+            .map((n) => parseAnnouncementRelatedType(n.relatedType))
+            .filter((id) => id && id !== "ALL")
+        )
+      ];
+
+      const courses = courseIds.length
+        ? await prisma.course.findMany({
+            where: { id: { in: courseIds } },
+            select: { id: true, title: true }
+          })
+        : [];
+
+      const coursesById = new Map(courses.map((c) => [c.id, c]));
+
+      const sortedAnnouncements = courseAnnouncements.map((item) =>
+        formatNotificationAnnouncement(item, coursesById)
+      );
       res.status(200).json({ success: true, data: sortedAnnouncements });
     } catch (error) {
       console.error("Error fetching student announcements:", error);
@@ -54,7 +88,27 @@ const userAnnouncementsController = {
             orderBy: { createdAt: "desc" }
           })
         : [];
-      const sortedAnnouncements = courseAnnouncements.map(formatNotificationAnnouncement);
+
+      const courseIds = [
+        ...new Set(
+          courseAnnouncements
+            .map((n) => parseAnnouncementRelatedType(n.relatedType))
+            .filter((id) => id && id !== "ALL")
+        )
+      ];
+
+      const courses = courseIds.length
+        ? await prisma.course.findMany({
+            where: { id: { in: courseIds } },
+            select: { id: true, title: true }
+          })
+        : [];
+
+      const coursesById = new Map(courses.map((c) => [c.id, c]));
+
+      const sortedAnnouncements = courseAnnouncements.map((item) =>
+        formatNotificationAnnouncement(item, coursesById)
+      );
       res.status(200).json({ success: true, data: sortedAnnouncements });
     } catch (error) {
       console.error("Error fetching instructor announcements:", error);

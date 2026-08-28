@@ -17,10 +17,17 @@ import {
   Mail,
   Phone,
   Award,
-  Briefcase
+  Briefcase,
+  ChevronDown,
+  ChevronUp,
+  PlayCircle,
+  HelpCircle,
+  FileText,
+  Layers
 } from "lucide-react";
 import toast from "react-hot-toast";
 import apiClient, { getApiErrorMessage } from "../../../api/client";
+
 const AdminCourseDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -30,6 +37,7 @@ const AdminCourseDetails = () => {
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [confirmAction, setConfirmAction] = useState(null);
+  const [expandedModules, setExpandedModules] = useState({});
   useEffect(() => {
     fetchCourseDetails();
   }, [id]);
@@ -301,23 +309,115 @@ const AdminCourseDetails = () => {
              </div>
           </div>}
 
-        {activeTab === "curriculum" && <div className="max-w-4xl space-y-4">
-             {course.curriculum.map((item, idx) => <div key={idx} className="p-4 rounded-xl border border-border bg-gray-50 flex items-center justify-between">
-                   <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 rounded-lg bg-white border border-border flex items-center justify-center font-bold text-caption">
-                       {idx + 1}
-                     </div>
-                     <div>
-                       <div className="font-bold text-heading">{item.title}</div>
-                       <div className="text-xs text-caption uppercase tracking-wider mt-1">{item.type}</div>
-                     </div>
-                   </div>
-                   <div className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg">
-                     {item.items} Items
-                   </div>
-                </div>)}
-             <p className="text-caption text-sm mt-4 italic">* Admins have read-only access to curriculum structure.</p>
-          </div>}
+        {activeTab === "curriculum" && (
+          <div className="max-w-4xl space-y-4">
+            <h3 className="text-lg font-bold text-heading dark:text-white border-b border-border dark:border-neutral-800 pb-3 flex justify-between items-center">
+              <span>Course Curriculum</span>
+              <span className="text-xs font-medium text-caption">
+                {course.curriculum ? course.curriculum.length : 0} Modules
+              </span>
+            </h3>
+
+            {course.curriculum && course.curriculum.length > 0 ? (
+              course.curriculum.map((module, idx) => {
+                const isExpanded = expandedModules[module.id] ?? true;
+                const itemsList = module.items || module.lessons || [];
+
+                return (
+                  <div
+                    key={module.id || idx}
+                    className="rounded-2xl border border-border dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs"
+                  >
+                    <button
+                      onClick={() =>
+                        setExpandedModules((prev) => ({ ...prev, [module.id]: !isExpanded }))
+                      }
+                      className="w-full p-4 bg-gray-50/80 dark:bg-neutral-800/50 flex items-center justify-between hover:bg-gray-100/80 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-sm shrink-0">
+                          {idx + 1}
+                        </div>
+                        <div className="text-left">
+                          <h4 className="font-bold text-heading dark:text-white text-base">
+                            {module.title}
+                          </h4>
+                          <p className="text-xs text-caption mt-0.5">
+                            {module.itemsCount || itemsList.length} items in this module
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
+                          Module {idx + 1}
+                        </span>
+                        {isExpanded ? (
+                          <ChevronUp className="w-5 h-5 text-caption" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-caption" />
+                        )}
+                      </div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="p-4 divide-y divide-border/50 dark:divide-neutral-800/50">
+                        {itemsList.length > 0 ? (
+                          itemsList.map((item, itemIdx) => (
+                            <div
+                              key={item.id || itemIdx}
+                              className="py-3 flex items-center justify-between text-sm hover:bg-gray-50/50 dark:hover:bg-neutral-800/30 px-2 rounded-lg transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                {item.type === "quiz" ? (
+                                  <HelpCircle className="w-4 h-4 text-purple-500 shrink-0" />
+                                ) : item.type === "assignment" ? (
+                                  <FileText className="w-4 h-4 text-blue-500 shrink-0" />
+                                ) : item.type === "project" ? (
+                                  <Briefcase className="w-4 h-4 text-amber-500 shrink-0" />
+                                ) : (
+                                  <PlayCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                                )}
+                                <div>
+                                  <span className="font-medium text-heading dark:text-white">
+                                    {item.title}
+                                  </span>
+                                  {item.description && (
+                                    <p className="text-xs text-caption line-clamp-1">{item.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 text-xs">
+                                {item.isPreview && (
+                                  <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 font-bold">
+                                    Preview
+                                  </span>
+                                )}
+                                <span className="text-caption font-medium">{item.duration}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-xs text-caption">
+                            No lessons or items added to this module yet.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-12 text-center text-caption font-medium bg-gray-50/50 dark:bg-neutral-800/30 rounded-3xl border border-border dark:border-neutral-800 space-y-3">
+                <Layers className="w-10 h-10 mx-auto text-caption/60" />
+                <p className="text-base font-bold text-heading dark:text-white">No Curriculum Modules Available</p>
+                <p className="text-xs text-caption max-w-md mx-auto">
+                  The instructor has not created modules or lessons for this course yet. Once created, curriculum items will be listed here.
+                </p>
+              </div>
+            )}
+            <p className="text-caption text-xs mt-4 italic">* Admins have read-only access to course curriculum structure.</p>
+          </div>
+        )}
 
         {activeTab === "analytics" && <div className="max-w-4xl">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
@@ -365,29 +465,53 @@ const AdminCourseDetails = () => {
                  </div>)}
           </div>}
 
-        {activeTab === "payments" && <div className="max-w-4xl">
-            <h3 className="text-lg font-bold text-heading mb-6 border-b border-border pb-2">Recent Transactions</h3>
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border text-caption uppercase tracking-wider text-xs">
-                  <th className="pb-3 font-semibold">Transaction ID</th>
-                  <th className="pb-3 font-semibold">Date</th>
-                  <th className="pb-3 font-semibold">Amount</th>
-                  <th className="pb-3 font-semibold text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {Array.from({ length: 5 }).map((_, i) => <tr key={i}>
-                    <td className="py-4 font-medium text-heading">TXN-{Math.floor(Math.random() * 1e6)}</td>
-                    <td className="py-4 text-caption">{new Date(Date.now() - Math.random() * 1e9).toLocaleDateString()}</td>
-                    <td className="py-4 font-bold text-heading">₹{course.price}</td>
-                    <td className="py-4 text-right">
-                      <span className="px-2 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600">Success</span>
-                    </td>
-                  </tr>)}
-              </tbody>
-            </table>
-          </div>}
+        {activeTab === "payments" && (
+          <div className="max-w-4xl space-y-6">
+            <h3 className="text-lg font-bold text-heading dark:text-white border-b border-border dark:border-neutral-800 pb-3">
+              Recent Transactions
+            </h3>
+            {course.payments && course.payments.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-border dark:border-neutral-800 text-caption uppercase tracking-wider text-xs">
+                      <th className="pb-3 font-semibold">Transaction ID</th>
+                      <th className="pb-3 font-semibold">Student</th>
+                      <th className="pb-3 font-semibold">Date</th>
+                      <th className="pb-3 font-semibold">Amount</th>
+                      <th className="pb-3 font-semibold text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border dark:divide-neutral-800">
+                    {course.payments.map((tx) => (
+                      <tr key={tx.id} className="hover:bg-gray-50/50 dark:hover:bg-neutral-800/30 transition-colors">
+                        <td className="py-4 font-bold text-heading dark:text-white">{tx.id}</td>
+                        <td className="py-4 font-medium text-heading dark:text-white">{tx.user}</td>
+                        <td className="py-4 text-caption">{new Date(tx.date).toLocaleDateString()}</td>
+                        <td className="py-4 font-bold text-heading dark:text-white">₹{tx.amount}</td>
+                        <td className="py-4 text-right">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              tx.status === "Success"
+                                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                : "bg-yellow-50 text-yellow-600 dark:bg-yellow-950/40 dark:text-yellow-400"
+                            }`}
+                          >
+                            {tx.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-caption font-medium bg-gray-50/50 dark:bg-neutral-800/30 rounded-2xl border border-border dark:border-neutral-800">
+                No payment transactions recorded for this course yet.
+              </div>
+            )}
+          </div>
+        )}
 
         {activeTab === "activity" && <div className="max-w-2xl relative">
             <div className="absolute left-[19px] top-4 bottom-4 w-[2px] bg-gray-100" />

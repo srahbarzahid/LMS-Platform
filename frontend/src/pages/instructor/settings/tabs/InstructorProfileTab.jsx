@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { Camera, Trash2, CheckCircle2, AlertCircle, RefreshCw, Save, Mail, Phone, User, Briefcase, Edit3, X } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { normalizeApiPath } from "../../../../api/client";
+import { useTranslation } from "../../../../context/LanguageContext";
+
 const InstructorProfileTab = () => {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -19,16 +23,16 @@ const InstructorProfileTab = () => {
   const [isPhoneVerified, setIsPhoneVerified] = useState(true);
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+
   useEffect(() => {
     fetchProfile();
   }, []);
+
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/instructor/settings/profile", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      const data = await res.json();
+      const res = await apiClient.get(normalizeApiPath("/instructor/settings/profile"));
+      const data = res.data;
       if (data.status === "success" && data.data) {
         populateFields(data.data);
       }

@@ -135,7 +135,22 @@ const AdminAnnouncementDetails = () => {
             <div>
               <p className="text-sm font-bold text-caption uppercase tracking-wider mb-1">Target Audience</p>
               <p className="text-heading font-medium">{announcement.audience}</p>
-              {announcement.targetId && <p className="text-sm text-body mt-0.5">Target ID: {announcement.targetId}</p>}
+              {announcement.targetId && (
+                <p className="text-sm text-body mt-0.5">
+                  Target ID:{" "}
+                  {announcement.audience === "Specific Course Students" ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/admin/courses/${announcement.targetId}`)}
+                      className="text-primary font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      {announcement.targetId}
+                    </button>
+                  ) : (
+                    announcement.targetId
+                  )}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-sm font-bold text-caption uppercase tracking-wider mb-1">Publish Option</p>

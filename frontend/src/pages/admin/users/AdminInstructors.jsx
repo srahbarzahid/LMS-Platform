@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { UserCog, UserCheck, UserX, UserPlus, IndianRupee } from "lucide-react";
+import apiClient from "../../../api/client";
+import { Users, UserCheck, UserX, UserPlus, BookOpen, UserCog, IndianRupee } from "lucide-react";
 import { Link } from "react-router-dom";
 import UserStatCards from "../../../components/admin/users/UserStatCards";
 import UserTable from "../../../components/admin/users/UserTable";
@@ -22,7 +22,7 @@ const AdminInstructors = () => {
   }, [page, searchTerm, statusFilter]);
   const fetchInstructors = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/admin/users/instructors?page=${page}&limit=10&search=${searchTerm}&status=${statusFilter}`);
+      const res = await apiClient.get(`/admin/users/instructors?page=${page}&limit=10&search=${searchTerm}&status=${statusFilter}`);
       setData(res.data.data);
       setTotal(res.data.total);
       setTotalPages(res.data.totalPages);
@@ -40,7 +40,7 @@ const AdminInstructors = () => {
           message: "Are you sure you want to delete the selected instructors? This action cannot be undone.",
           onConfirm: async () => {
             try {
-              await axios.delete(`http://localhost:5000/api/admin/users/${ids[0]}`);
+              await apiClient.delete(`/admin/users/${ids[0]}`);
               toast.success("Instructors deleted successfully");
               fetchInstructors();
             } catch (err) {
@@ -51,11 +51,11 @@ const AdminInstructors = () => {
         });
         return;
       } else if (action === "status") {
-        await axios.patch(`http://localhost:5000/api/admin/users/${ids[0]}/status`, { status: payload?.status });
+        await apiClient.patch(`/admin/users/${ids[0]}/status`, { status: payload?.status });
         toast.success(`Status updated to ${payload?.status}`);
         fetchInstructors();
       } else if (action === "reset") {
-        await axios.post(`http://localhost:5000/api/admin/users/${ids[0]}/reset-password`, { password: payload?.password });
+        await apiClient.post(`/admin/users/${ids[0]}/reset-password`, { password: payload?.password });
         toast.success("Password reset successfully");
       }
     } catch (err) {

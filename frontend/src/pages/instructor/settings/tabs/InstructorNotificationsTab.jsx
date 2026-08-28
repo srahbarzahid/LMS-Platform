@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { Mail, Smartphone, Users, Save, RefreshCw, FileCheck, HelpCircle, UserPlus } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { normalizeApiPath } from "../../../../api/client";
+import { useTranslation } from "../../../../context/LanguageContext";
+
 const InstructorNotificationsTab = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -12,16 +16,16 @@ const InstructorNotificationsTab = () => {
     newEnrollment: true,
     discussionReplies: true
   });
+
   useEffect(() => {
     fetchNotifications();
   }, []);
+
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/instructor/settings/notifications", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      const data = await res.json();
+      const res = await apiClient.get(normalizeApiPath("/instructor/settings/notifications"));
+      const data = res.data;
       if (data.status === "success" && data.data) {
         if (typeof data.data.emailNotifications === "boolean") {
           setEmailNotifications(data.data.emailNotifications);

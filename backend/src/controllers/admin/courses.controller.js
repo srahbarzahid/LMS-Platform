@@ -284,7 +284,23 @@ const adminCoursesController = {
         return;
       }
 
-      await prisma.course.delete({ where: { id: req.params.id } });
+      await prisma.$transaction([
+        prisma.cart.deleteMany({ where: { courseId: req.params.id } }),
+        prisma.wishlist.deleteMany({ where: { courseId: req.params.id } }),
+        prisma.submission.deleteMany({ where: { assignment: { courseId: req.params.id } } }),
+        prisma.projectSubmission.deleteMany({ where: { project: { courseId: req.params.id } } }),
+        prisma.courseCompletion.deleteMany({ where: { courseId: req.params.id } }),
+        prisma.certificate.deleteMany({ where: { courseId: req.params.id } }),
+        prisma.review.deleteMany({ where: { courseId: req.params.id } }),
+        prisma.payment.deleteMany({ where: { courseId: req.params.id } }),
+        prisma.enrollment.deleteMany({ where: { courseId: req.params.id } }),
+        prisma.quiz.deleteMany({ where: { courseId: req.params.id } }),
+        prisma.assignment.deleteMany({ where: { courseId: req.params.id } }),
+        prisma.project.deleteMany({ where: { courseId: req.params.id } }),
+        prisma.module.deleteMany({ where: { courseId: req.params.id } }),
+        prisma.course.delete({ where: { id: req.params.id } })
+      ]);
+
       res.status(200).json({ success: true, message: "Course deleted" });
     } catch (error) {
       sendAdminCourseError(res, error, "Server error");

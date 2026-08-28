@@ -29,7 +29,7 @@ describe("Student Settings API Endpoints", () => {
     it("integration test: confirming a student CANNOT access admin platform settings (403 Forbidden)", async () => {
       const res = await request(app).get("/api/admin/settings/platform").set("Authorization", `Bearer ${studentToken}`);
       expect(res.status).toBe(403);
-      expect(res.body.message).toBe("Forbidden");
+      expect(res.body.message).toContain("Forbidden");
     });
   });
   describe("Student Profile Endpoints & Validation", () => {

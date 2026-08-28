@@ -215,8 +215,11 @@ model Review {
   userId    String
   courseId  String
   rating    Int
+  title     String?
   comment   String?  @db.Text
+  status    String   @default("Published") // Published, Hidden
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)

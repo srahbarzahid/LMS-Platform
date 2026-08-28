@@ -15,7 +15,7 @@ import {
   AlertTriangle,
   ChevronDown
 } from "lucide-react";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import toast from "react-hot-toast";
 import html2pdf from "html2pdf.js";
 import {
@@ -115,7 +115,6 @@ const AdminAnalytics = () => {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const baseUrl = "http://localhost:5000/api/admin/analytics";
       const [
         sumRes,
         userRes,
@@ -131,19 +130,19 @@ const AdminAnalytics = () => {
         actRes,
         insightRes
       ] = await Promise.all([
-        axios.get(`${baseUrl}/summary`),
-        axios.get(`${baseUrl}/users`),
-        axios.get(`${baseUrl}/revenue`),
-        axios.get(`${baseUrl}/courses`),
-        axios.get(`${baseUrl}/enrollments`),
-        axios.get(`${baseUrl}/categories`),
-        axios.get(`${baseUrl}/instructors`),
-        axios.get(`${baseUrl}/payments`),
-        axios.get(`${baseUrl}/certificates`),
-        axios.get(`${baseUrl}/reviews`),
-        axios.get(`${baseUrl}/offers`),
-        axios.get(`${baseUrl}/activity`),
-        axios.get(`${baseUrl}/insights`)
+        apiClient.get("/admin/analytics/summary"),
+        apiClient.get("/admin/analytics/users"),
+        apiClient.get("/admin/analytics/revenue"),
+        apiClient.get("/admin/analytics/courses"),
+        apiClient.get("/admin/analytics/enrollments"),
+        apiClient.get("/admin/analytics/categories"),
+        apiClient.get("/admin/analytics/instructors"),
+        apiClient.get("/admin/analytics/payments"),
+        apiClient.get("/admin/analytics/certificates"),
+        apiClient.get("/admin/analytics/reviews"),
+        apiClient.get("/admin/analytics/offers"),
+        apiClient.get("/admin/analytics/activity"),
+        apiClient.get("/admin/analytics/insights")
       ]);
       setSummary(sumRes.data.data);
       setUsers(userRes.data.data);

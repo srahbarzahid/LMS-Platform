@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { clearAuthSession } from "../../utils/auth";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "../../context/LanguageContext";
 import {
   LayoutDashboard,
   Book,
@@ -27,7 +28,9 @@ import {
 } from "lucide-react";
 import ThemeToggle from "../../components/common/ThemeToggle";
 import GlobalSearch from "../../components/common/GlobalSearch";
+
 const InstructorLayout = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -94,49 +97,50 @@ const InstructorLayout = () => {
     clearAuthSession();
     navigate("/login", { replace: true });
   };
+
   const sidebarGroups = [
     {
       title: "DASHBOARD",
       links: [
-        { name: "Dashboard", path: "/instructor/dashboard", icon: <LayoutDashboard className="w-[18px] h-[18px]" /> }
+        { name: t("nav.dashboard", "Dashboard"), path: "/instructor/dashboard", icon: <LayoutDashboard className="w-[18px] h-[18px]" /> }
       ]
     },
     {
       title: "COURSE MANAGEMENT",
       links: [
-        { name: "My Courses", path: "/instructor/courses", icon: <Book className="w-[18px] h-[18px]" /> },
-        { name: "Create Course", path: "/instructor/courses/create", icon: <PlusCircle className="w-[18px] h-[18px]" /> },
-        { name: "Curriculum", path: "/instructor/curriculum", icon: <ListTree className="w-[18px] h-[18px]" /> }
+        { name: t("nav.courses", "My Courses"), path: "/instructor/courses", icon: <Book className="w-[18px] h-[18px]" /> },
+        { name: t("nav.createCourse", "Create Course"), path: "/instructor/courses/create", icon: <PlusCircle className="w-[18px] h-[18px]" /> },
+        { name: t("nav.curriculum", "Curriculum"), path: "/instructor/curriculum", icon: <ListTree className="w-[18px] h-[18px]" /> }
       ]
     },
     {
       title: "ASSESSMENTS",
       links: [
-        { name: "Lessons Workspace", path: "/instructor/lessons", icon: <PlaySquare className="w-[18px] h-[18px]" /> },
-        { name: "Quizzes", path: "/instructor/quizzes", icon: <CheckSquare className="w-[18px] h-[18px]" /> },
-        { name: "Assignments", path: "/instructor/assignments", icon: <ClipboardList className="w-[18px] h-[18px]" /> },
-        { name: "Projects", path: "/instructor/projects", icon: <Briefcase className="w-[18px] h-[18px]" /> }
+        { name: t("nav.lessons", "Lessons Workspace"), path: "/instructor/lessons", icon: <PlaySquare className="w-[18px] h-[18px]" /> },
+        { name: t("nav.quizzes", "Quizzes"), path: "/instructor/quizzes", icon: <CheckSquare className="w-[18px] h-[18px]" /> },
+        { name: t("nav.assignments", "Assignments"), path: "/instructor/assignments", icon: <ClipboardList className="w-[18px] h-[18px]" /> },
+        { name: t("nav.projects", "Projects"), path: "/instructor/projects", icon: <Briefcase className="w-[18px] h-[18px]" /> }
       ]
     },
     {
       title: "STUDENTS",
       links: [
-        { name: "Students", path: "/instructor/students", icon: <Users className="w-[18px] h-[18px]" /> },
-        { name: "Reviews", path: "/instructor/reviews", icon: <Star className="w-[18px] h-[18px]" /> },
-        { name: "Certificates", path: "/instructor/certificates", icon: <Award className="w-[18px] h-[18px]" /> }
+        { name: t("nav.students", "Students"), path: "/instructor/students", icon: <Users className="w-[18px] h-[18px]" /> },
+        { name: t("nav.reviews", "Reviews"), path: "/instructor/reviews", icon: <Star className="w-[18px] h-[18px]" /> },
+        { name: t("nav.certificates", "Certificates"), path: "/instructor/certificates", icon: <Award className="w-[18px] h-[18px]" /> }
       ]
     },
     {
       title: "ANALYTICS",
       links: [
-        { name: "Analytics", path: "/instructor/analytics", icon: <BarChart3 className="w-[18px] h-[18px]" /> },
-        { name: "Announcements", path: "/instructor/announcements", icon: <Megaphone className="w-[18px] h-[18px]" /> }
+        { name: t("nav.analytics", "Analytics"), path: "/instructor/analytics", icon: <BarChart3 className="w-[18px] h-[18px]" /> },
+        { name: t("nav.announcements", "Announcements"), path: "/instructor/announcements", icon: <Megaphone className="w-[18px] h-[18px]" /> }
       ]
     },
     {
       title: "ACCOUNT",
       links: [
-        { name: "Settings", path: "/instructor/settings", icon: <Settings className="w-[18px] h-[18px]" /> }
+        { name: t("nav.settings", "Settings"), path: "/instructor/settings", icon: <Settings className="w-[18px] h-[18px]" /> }
       ]
     }
   ];
@@ -214,11 +218,11 @@ const InstructorLayout = () => {
         <div className="p-4 border-t border-border shrink-0 bg-white">
           <button
             onClick={handleLogout}
-            title={isSidebarCollapsed ? "Logout" : undefined}
+            title={isSidebarCollapsed ? t("nav.logout", "Log Out") : undefined}
             className={`w-full flex items-center h-9 rounded-lg transition-all duration-200 cursor-pointer text-red-600 hover:bg-red-50 ${isSidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"}`}
           >
             <div className="shrink-0"><LogOut className="w-5 h-5" /></div>
-            {!isSidebarCollapsed && <span className="text-[14px] leading-[20px] font-medium truncate">Logout</span>}
+            {!isSidebarCollapsed && <span className="text-[14px] leading-[20px] font-medium truncate">{t("nav.logout", "Log Out")}</span>}
           </button>
         </div>
       </aside>
@@ -268,7 +272,18 @@ const InstructorLayout = () => {
                     <div className="max-h-72 overflow-y-auto divide-y divide-border custom-scrollbar">
                       {announcements.length > 0 ? (
                         announcements.map((item, idx) => (
-                          <div key={idx} className="p-3.5 hover:bg-gray-50 dark:hover:bg-neutral-800/60 transition-colors">
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              setNotificationsOpen(false);
+                              if (item.courseId && item.courseId !== "ALL") {
+                                navigate(`/instructor/courses/${item.courseId}/edit`);
+                              } else {
+                                navigate("/instructor/announcements");
+                              }
+                            }}
+                            className="p-3.5 hover:bg-gray-50 dark:hover:bg-neutral-800/60 transition-colors cursor-pointer"
+                          >
                             <div className="text-xs font-bold text-heading">{item.title}</div>
                             <div className="text-xs text-caption mt-1 line-clamp-2">{item.message || item.text}</div>
                             <div className="text-[10px] text-caption mt-1.5 font-semibold text-primary">{item.course || "All Courses"} • {item.date || "Just now"}</div>
@@ -394,7 +409,7 @@ const InstructorLayout = () => {
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
               >
                 <LogOut className="w-5 h-5" />
-                <span>Logout</span>
+                <span>{t("nav.logout", "Log Out")}</span>
               </button>
             </div>
           </aside>

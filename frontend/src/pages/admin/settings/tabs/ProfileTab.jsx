@@ -88,6 +88,11 @@ const ProfileTab = () => {
             setProfileImage(data.data.profileImage);
             setPreviewPhoto(null);
           }
+          const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+          const updatedUser = { ...currentUser, ...data.data };
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+          window.dispatchEvent(new Event("userProfileUpdated"));
+          window.dispatchEvent(new Event("storage"));
         }
       } else {
         toast.error(data.message || "Failed to save profile.");

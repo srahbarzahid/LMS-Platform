@@ -29,10 +29,17 @@
 }
 
 @layer base {
+  html {
+    font-size: 87.5%;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-body);
     font-family: var(--font-body);
+    font-size: 0.9375rem;
+    line-height: 1.5;
   }
 
   h1, h2, h3, h4, h5, h6 {

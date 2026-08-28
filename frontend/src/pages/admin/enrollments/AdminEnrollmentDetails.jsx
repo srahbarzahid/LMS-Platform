@@ -1,26 +1,28 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { ArrowLeft, User, Mail, Phone, Calendar, BookOpen, Clock, Tag, Activity, FileText, CheckCircle, Award, CreditCard } from "lucide-react";
 import toast from "react-hot-toast";
+import apiClient, { getApiErrorMessage } from "../../../api/client";
+
 const AdminEnrollmentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [enrollment, setEnrollment] = useState(null);
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
         const [enrRes, progRes] = await Promise.all([
-          axios.get(`http://localhost:5000/api/admin/enrollments/${id}`),
-          axios.get(`http://localhost:5000/api/admin/enrollments/${id}/progress`)
+          apiClient.get(`/admin/enrollments/${id}`),
+          apiClient.get(`/admin/enrollments/${id}/progress`)
         ]);
         setEnrollment(enrRes.data.data);
         setProgress(progRes.data.data);
       } catch (err) {
-        toast.error("Failed to load enrollment details");
+        toast.error(getApiErrorMessage(err, "Failed to load enrollment details"));
         navigate("/admin/enrollments");
       } finally {
         setLoading(false);

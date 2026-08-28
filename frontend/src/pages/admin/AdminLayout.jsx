@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { clearAuthSession } from "../../utils/auth";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import apiClient from "../../api/client";
 import {
   LayoutDashboard,
   UserCog,
@@ -33,6 +34,65 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [adminUser, setAdminUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch (e) {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const syncAdminProfile = async () => {
+      try {
+        const res = await apiClient.get("/admin/settings/profile");
+        if (res.data?.data && isMounted) {
+          setAdminUser(res.data.data);
+          const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+          localStorage.setItem("user", JSON.stringify({ ...currentUser, ...res.data.data }));
+        }
+      } catch (err) {
+        console.error("Failed to sync admin profile image:", err);
+      }
+    };
+
+    syncAdminProfile();
+
+    const handleProfileUpdate = () => {
+      try {
+        setAdminUser(JSON.parse(localStorage.getItem("user") || "{}"));
+      } catch (e) {}
+      syncAdminProfile();
+    };
+
+    window.addEventListener("userProfileUpdated", handleProfileUpdate);
+    window.addEventListener("storage", handleProfileUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("userProfileUpdated", handleProfileUpdate);
+      window.removeEventListener("storage", handleProfileUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAdminNotifications = async () => {
+      try {
+        const res = await apiClient.get("/admin/system-logs");
+        if (res.data?.data && isMounted) {
+          const list = Array.isArray(res.data.data) ? res.data.data : [];
+          const unread = list.filter((item) => !item.read && !item.isRead).length;
+          setUnreadCount(unread);
+        }
+      } catch (err) {
+        // Fallback
+      }
+    };
+    fetchAdminNotifications();
+  }, [location.pathname]);
+
   const handleLogout = () => {
     clearAuthSession();
     navigate("/login", { replace: true });
@@ -205,16 +265,38 @@ const AdminLayout = () => {
             <ThemeToggle />
             <button className="relative p-2 text-body hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-xl transition-colors cursor-pointer">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              )}
             </button>
             <div className="w-px h-6 bg-border hidden sm:block" />
             <Link to="/admin/settings" className="flex items-center gap-3 cursor-pointer group">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 text-primary font-bold text-sm group-hover:bg-primary group-hover:text-white transition-colors">
-                <User className="w-4 h-4 text-primary group-hover:text-white transition-colors" />
-              </div>
+              {adminUser.profileImage ? (
+                <img
+                  src={
+                    adminUser.profileImage.startsWith("http") || adminUser.profileImage.startsWith("data:")
+                      ? adminUser.profileImage
+                      : `http://localhost:5000${adminUser.profileImage}`
+                  }
+                  alt={adminUser.name || "Super Admin"}
+                  className="w-9 h-9 rounded-full object-cover border border-primary/20 shrink-0 group-hover:border-primary transition-all shadow-xs"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 text-primary font-bold text-sm group-hover:bg-primary group-hover:text-white transition-colors">
+                  {adminUser.name ? (
+                    adminUser.name.charAt(0).toUpperCase()
+                  ) : (
+                    <User className="w-4 h-4 text-primary group-hover:text-white transition-colors" />
+                  )}
+                </div>
+              )}
               <div className="hidden sm:block text-left">
-                <div className="text-sm font-bold text-heading leading-tight truncate max-w-[120px] md:max-w-none">Super Admin</div>
-                <div className="text-xs text-caption mt-0.5 truncate max-w-[140px] md:max-w-none">admin@pitech.com</div>
+                <div className="text-sm font-bold text-heading leading-tight truncate max-w-[120px] md:max-w-none">
+                  {adminUser.name || "Super Admin"}
+                </div>
+                <div className="text-xs text-caption mt-0.5 truncate max-w-[140px] md:max-w-none">
+                  {adminUser.email || "admin@pitech.com"}
+                </div>
               </div>
             </Link>
           </div>

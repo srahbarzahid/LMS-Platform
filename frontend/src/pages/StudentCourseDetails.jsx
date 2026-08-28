@@ -15,17 +15,8 @@ const StudentCourseDetails = () => {
   };
   const handleAddToCart = () => {
     addToCart(courseData);
-    setShowPopup(true);
-    setTimeout(() => setShowPopup(false), 3e3);
   };
   return <div className="bg-[#f8f9fa] min-h-screen pb-20 relative">
-      {
-    /* Toast Notification */
-  }
-      <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 z-50 ${showPopup ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8 pointer-events-none"}`}>
-        <CheckCircle2 className="w-5 h-5 text-green-400" />
-        <span className="font-medium text-sm">Course added to cart successfully</span>
-      </div>
 
       {
     /* Back Button & Header */

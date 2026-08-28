@@ -203,19 +203,22 @@ const InstructorAccountSecurityTab = () => {
           </div>
         </div>
 
-        <div className="space-y-4 max-w-xl">
-          {
-    /* Current Password */
-  }
+        <form autoComplete="off" onSubmit={(e) => e.preventDefault()} className="space-y-4 max-w-xl">
+          {/* Dummy hidden inputs to absorb browser autofill */}
+          <input type="text" name="fake_username_trap" className="hidden" tabIndex={-1} autoComplete="username" />
+          <input type="password" name="fake_password_trap" className="hidden" tabIndex={-1} autoComplete="current-password" />
+
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-caption mb-1.5">Current Password</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-caption absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type={showCurrentPassword ? "text" : "password"}
+                name="lms_instructor_current_pwd"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                autoComplete="off"
+                autoComplete="new-password"
+                data-lpignore="true"
                 className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-border rounded-xl text-sm text-heading focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 placeholder="Enter current password"
               />
@@ -235,9 +238,11 @@ const InstructorAccountSecurityTab = () => {
               <Lock className="w-4 h-4 text-caption absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type={showNewPassword ? "text" : "password"}
+                name="lms_instructor_new_pwd"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 autoComplete="new-password"
+                data-lpignore="true"
                 className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-border rounded-xl text-sm text-heading focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 placeholder="Enter new password"
               />
@@ -250,7 +255,8 @@ const InstructorAccountSecurityTab = () => {
               </button>
             </div>
 
-            {newPassword && <div className="mt-2 space-y-1">
+            {newPassword && (
+              <div className="mt-2 space-y-1">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-caption">Password Strength:</span>
                   <span className={`font-bold ${strengthInfo.color}`}>{strengthInfo.text}</span>
@@ -259,7 +265,8 @@ const InstructorAccountSecurityTab = () => {
                   <div className={`h-full transition-all duration-300 ${strengthInfo.bg} ${strengthInfo.width}`} />
                 </div>
                 <p className="text-[11px] text-caption mt-1">Must contain min 8 characters with upper, lower, digit & special symbol.</p>
-              </div>}
+              </div>
+            )}
           </div>
 
           <div>
@@ -268,9 +275,11 @@ const InstructorAccountSecurityTab = () => {
               <Lock className="w-4 h-4 text-caption absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type={showConfirmPassword ? "text" : "password"}
+                name="lms_instructor_confirm_pwd"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"
+                data-lpignore="true"
                 className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-border rounded-xl text-sm text-heading focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 placeholder="Confirm new password"
               />
@@ -286,16 +295,16 @@ const InstructorAccountSecurityTab = () => {
 
           <div className="pt-2">
             <button
-    type="button"
-    disabled={!currentPassword || !newPassword || !confirmPassword || savingPassword}
-    onClick={() => setShowPasswordModal(true)}
-    className="px-6 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md hover:bg-secondary transition-colors disabled:opacity-50 inline-flex items-center gap-2"
-  >
+              type="button"
+              disabled={!currentPassword || !newPassword || !confirmPassword || savingPassword}
+              onClick={() => setShowPasswordModal(true)}
+              className="px-6 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md hover:bg-secondary transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+            >
               {savingPassword ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
               Update Password
             </button>
           </div>
-        </div>
+        </form>
       </div>
 
       {

@@ -1,154 +1,180 @@
-import { useState, useMemo } from "react";
-import { Search, Filter, Folder, CheckCircle2, Clock, Calendar, UploadCloud } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Search, Filter, Folder, CheckCircle2, Clock, Calendar, UploadCloud, Briefcase } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-const mockProjects = [
-  { id: 1, title: "Build a Weather Station", course: "IoT Fundamentals", module: "Module 4", status: "Pending", dueDate: "2026-07-20T23:59:59Z", maxMarks: 100 },
-  { id: 2, title: "Smart Home Automation", course: "Advanced IoT", module: "Module 2", status: "Submitted", dueDate: "2026-07-15T23:59:59Z", maxMarks: 100 },
-  { id: 3, title: "Sensor Integration", course: "IoT Fundamentals", module: "Module 1", status: "Graded", dueDate: "2026-06-30T23:59:59Z", maxMarks: 50 },
-  { id: 4, title: "MQTT Broker Setup", course: "IoT Protocols", module: "Module 3", status: "Resubmission Required", dueDate: "2026-07-05T23:59:59Z", maxMarks: 50 }
-];
+import { studentApi } from "../api/studentApi";
+import CustomSelect from "../components/common/CustomSelect";
+
 const StudentProjects = () => {
+  const navigate = useNavigate();
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoading(true);
+      try {
+        const response = await studentApi.getProjects();
+        if (response.success && Array.isArray(response.data)) {
+          setProjects(response.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch student projects:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
+
   const filteredProjects = useMemo(() => {
-    return mockProjects.filter((project) => {
-      const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) || project.course.toLowerCase().includes(searchQuery.toLowerCase());
+    return projects.filter((project) => {
+      const matchesSearch =
+        project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.course.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "All" || project.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [searchQuery, statusFilter]);
+  }, [projects, searchQuery, statusFilter]);
+
   const stats = useMemo(() => {
     return {
-      total: mockProjects.length,
-      pending: mockProjects.filter((p) => p.status === "Pending" || p.status === "Resubmission Required").length,
-      submitted: mockProjects.filter((p) => p.status === "Submitted" || p.status === "Under Review").length,
-      graded: mockProjects.filter((p) => p.status === "Graded").length
+      total: projects.length,
+      pending: projects.filter((p) => p.status === "Pending" || p.status === "Resubmission Required").length,
+      submitted: projects.filter((p) => p.status === "Submitted" || p.status === "Under Review").length,
+      graded: projects.filter((p) => p.status === "Graded").length
     };
-  }, []);
+  }, [projects]);
+
   const getStatusStyle = (status) => {
     switch (status) {
       case "Graded":
-        return "bg-emerald-100 text-emerald-700";
+        return "bg-emerald-100 text-emerald-700 border-emerald-200";
       case "Submitted":
       case "Under Review":
-        return "bg-blue-100 text-blue-700";
+        return "bg-blue-100 text-blue-700 border-blue-200";
       case "Resubmission Required":
-        return "bg-red-100 text-red-700";
+        return "bg-amber-100 text-amber-700 border-amber-200";
       default:
-        return "bg-orange-100 text-orange-700";
+        return "bg-orange-100 text-orange-700 border-orange-200";
     }
   };
-  return <div className="space-y-8 pb-8">
-      {
-    /* Header */
+
+  if (loading) {
+    return (
+      <div className="flex py-20 items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
+
+  return (
+    <div className="space-y-8 pb-8">
+      {/* Header */}
       <div className="bg-white rounded-3xl p-6 lg:p-8 border border-border shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h1 className="text-3xl font-heading font-bold text-heading mb-2">My Projects</h1>
-          <p className="text-caption">Download project tasks, submit your work, and view feedback.</p>
+          <p className="text-caption">View capstone project requirements, submit your work, and view feedback.</p>
         </div>
       </div>
 
-      {
-    /* Stats Cards */
-  }
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-    { label: "Total Projects", value: stats.total, icon: Folder, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Pending", value: stats.pending, icon: Clock, color: "text-orange-500", bg: "bg-orange-50" },
-    { label: "Submitted", value: stats.submitted, icon: UploadCloud, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "Graded", value: stats.graded, icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50" }
-  ].map((stat, i) => <div key={i} className="bg-white rounded-2xl p-6 border border-border shadow-sm flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${stat.bg} ${stat.color}`}>
-              <stat.icon className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-3xl font-heading font-bold text-heading">{stat.value}</div>
-              <div className="text-sm font-medium text-caption">{stat.label}</div>
-            </div>
-          </div>)}
-      </div>
-
-      {
-    /* Filters & Search */
-  }
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="w-5 h-5 text-caption absolute left-4 top-1/2 transform -translate-y-1/2" />
+      {/* Filter & Search Bar */}
+      <div className="bg-white rounded-2xl p-4 border border-border shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 text-caption absolute left-4 top-1/2 -translate-y-1/2" />
           <input
-    type="text"
-    placeholder="Search projects by title or course..."
-    value={searchQuery}
-    onChange={(e) => setSearchQuery(e.target.value)}
-    className="w-full pl-12 pr-4 py-3 bg-white border border-border rounded-xl text-sm outline-none focus:border-primary transition-colors"
-  />
+            type="text"
+            placeholder="Search projects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-border rounded-xl text-sm outline-none focus:border-primary transition-colors"
+          />
         </div>
-        <div className="flex gap-4 shrink-0 overflow-x-auto pb-2 md:pb-0">
-          <div className="relative shrink-0">
-            <Filter className="w-4 h-4 text-caption absolute left-4 top-1/2 transform -translate-y-1/2" />
-            <select
-    value={statusFilter}
-    onChange={(e) => setStatusFilter(e.target.value)}
-    className="pl-10 pr-8 py-3 bg-white border border-border rounded-xl text-sm font-medium outline-none focus:border-primary transition-colors appearance-none cursor-pointer"
-  >
-              <option value="All">All Statuses</option>
-              <option value="Pending">Pending</option>
-              <option value="Submitted">Submitted</option>
-              <option value="Graded">Graded</option>
-              <option value="Resubmission Required">Resubmission Required</option>
-            </select>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto min-w-[200px]">
+          <CustomSelect
+            options={[
+              { value: "All", label: "All Statuses" },
+              { value: "Pending", label: "Pending" },
+              { value: "Submitted", label: "Submitted" },
+              { value: "Graded", label: "Graded" },
+              { value: "Resubmission Required", label: "Resubmission Required" }
+            ]}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
+          <span className="text-xs text-caption font-bold uppercase tracking-wider block mb-1">Total Projects</span>
+          <span className="text-2xl font-bold text-heading">{stats.total}</span>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
+          <span className="text-xs text-orange-600 font-bold uppercase tracking-wider block mb-1">Pending</span>
+          <span className="text-2xl font-bold text-orange-600">{stats.pending}</span>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
+          <span className="text-xs text-blue-600 font-bold uppercase tracking-wider block mb-1">Submitted</span>
+          <span className="text-2xl font-bold text-blue-600">{stats.submitted}</span>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
+          <span className="text-xs text-emerald-600 font-bold uppercase tracking-wider block mb-1">Graded</span>
+          <span className="text-2xl font-bold text-emerald-600">{stats.graded}</span>
+        </div>
+      </div>
+
+      {/* Project Cards Grid */}
+      {filteredProjects.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredProjects.map((project) => (
+            <div key={project.id} className="bg-white rounded-3xl p-6 border border-border shadow-sm flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(project.status)}`}>
+                    {project.status}
+                  </span>
+                  <span className="text-xs font-semibold text-caption bg-gray-100 px-2.5 py-0.5 rounded-md">
+                    {project.course}
+                  </span>
+                </div>
+
+                <h3 className="font-heading font-bold text-xl text-heading mb-1">{project.title}</h3>
+                <p className="text-xs text-caption font-medium">Module: {project.module}</p>
+              </div>
+
+              {project.submission?.feedback && (
+                <div className="bg-blue-50/70 border border-blue-200 text-blue-900 text-xs p-3 rounded-xl">
+                  <strong>Feedback:</strong> {project.submission.feedback}
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-border flex items-center justify-between text-xs text-caption">
+                <span>Max Marks: <strong>{project.maxMarks}</strong></span>
+                {project.dueDate && <span>Due: <strong>{new Date(project.dueDate).toLocaleDateString()}</strong></span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl p-12 border border-border text-center space-y-4 shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center mx-auto">
+            <Briefcase className="w-8 h-8" />
+          </div>
+          <div>
+            <h3 className="font-bold text-heading text-lg">No Projects Found</h3>
+            <p className="text-caption text-sm max-w-sm mx-auto mt-1">
+              You currently have no capstone projects assigned or matching your search.
+            </p>
           </div>
         </div>
-      </div>
-
-      {
-    /* Projects Grid */
-  }
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredProjects.map((project) => <div key={project.id} className="bg-white rounded-3xl p-6 border border-border shadow-sm flex flex-col group hover:shadow-md transition-all hover:border-primary/30">
-            
-            <div className="flex justify-between items-start mb-4">
-              <span className={`text-xs font-bold px-3 py-1 rounded-lg ${getStatusStyle(project.status)}`}>
-                {project.status}
-              </span>
-            </div>
-
-            <h3 className="font-heading font-bold text-lg text-heading mb-1 line-clamp-2">{project.title}</h3>
-            <p className="text-sm font-bold text-primary mb-1 truncate">{project.course}</p>
-            <p className="text-xs text-caption font-medium mb-6 truncate">{project.module}</p>
-
-            <div className="mt-auto space-y-3 mb-6">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-caption flex items-center gap-1.5"><Calendar className="w-4 h-4" /> Due Date</span>
-                <span className="font-bold text-heading">{new Date(project.dueDate).toLocaleDateString()}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-caption flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Max Marks</span>
-                <span className="font-bold text-heading">{project.maxMarks}</span>
-              </div>
-            </div>
-
-            <button
-    onClick={() => navigate(`/student/project/${project.id}`)}
-    className="w-full py-2.5 bg-gray-50 group-hover:bg-primary group-hover:text-white text-heading border border-border group-hover:border-primary rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2"
-  >
-              {project.status === "Pending" ? "Open Project" : "View Details"}
-            </button>
-          </div>)}
-        
-        {filteredProjects.length === 0 && <div className="col-span-full py-12 text-center bg-white rounded-3xl border border-border border-dashed">
-            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Folder className="w-8 h-8 text-caption" />
-            </div>
-            <h3 className="font-heading font-bold text-lg text-heading mb-2">No projects found</h3>
-            <p className="text-caption">Try adjusting your search or filters to find what you're looking for.</p>
-          </div>}
-      </div>
-
-    </div>;
+      )}
+    </div>
+  );
 };
-var stdin_default = StudentProjects;
-export {
-  stdin_default as default
-};
+
+export default StudentProjects;

@@ -78,13 +78,18 @@ const ensureCourseAccess = async (courseId, instructorId) => {
   return course;
 };
 
-const ensureModuleAccess = async (moduleId, instructorId) => {
+const ensureModuleAccess = async (moduleId, instructorId, courseId = null) => {
+  if (!moduleId) return null;
   const module = await prisma.module.findFirst({
     where: { id: moduleId, course: { instructorId } },
     include: { course: { select: { id: true, title: true } } }
   });
 
   if (!module) {
+    if (courseId) {
+      await ensureCourseAccess(courseId, instructorId);
+      return null;
+    }
     const error = new Error("Module not found for this instructor.");
     error.statusCode = 404;
     throw error;
@@ -879,7 +884,7 @@ export const saveInstructorAssignment = async ({ instructorId, assignmentId, inp
   }
 
   if (input.courseId) await ensureCourseAccess(input.courseId, instructorId);
-  if (input.moduleId) await ensureModuleAccess(input.moduleId, instructorId);
+  if (input.moduleId) await ensureModuleAccess(input.moduleId, instructorId, input.courseId);
 
   const data = {
     title,

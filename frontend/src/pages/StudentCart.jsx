@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { ShoppingCart, Trash2, ArrowRight } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import axios from "axios";
+import toast from "react-hot-toast";
+
 const StudentCart = () => {
   const { cart, removeFromCart } = useCart();
   const [promoCode, setPromoCode] = useState("");
@@ -10,6 +12,14 @@ const StudentCart = () => {
   const [automaticOffers, setAutomaticOffers] = useState([]);
   const [isApplying, setIsApplying] = useState(false);
   const [promoError, setPromoError] = useState("");
+
+  const handleCheckout = () => {
+    toast.error("Payment gateway is currently under construction. Online payment processing is not implemented yet.", {
+      id: "checkout-under-construction",
+      duration: 4000,
+      icon: "🚧"
+    });
+  };
   useEffect(() => {
     const fetchAutomaticOffers = async () => {
       try {
@@ -206,7 +216,10 @@ const StudentCart = () => {
                   </div>}
               </div>
               
-              <button className="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg hover:bg-secondary transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+              <button
+                onClick={handleCheckout}
+                className="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg hover:bg-secondary transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer"
+              >
                 Checkout <ArrowRight className="w-5 h-5" />
               </button>
               

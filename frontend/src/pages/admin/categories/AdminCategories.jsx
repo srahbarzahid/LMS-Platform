@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { Plus, ListTree, Star, BookOpen, Crown } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import toast from "react-hot-toast";
@@ -9,6 +8,8 @@ import CategoryDetailsModal from "../../../components/admin/categories/CategoryD
 import CustomDropdown from "../../../components/common/CustomDropdown";
 import SuccessModal from "../../../components/common/SuccessModal";
 import ConfirmModal from "../../../components/common/ConfirmModal";
+import apiClient, { getApiErrorMessage } from "../../../api/client";
+
 const AdminCategories = () => {
   const [data, setData] = useState([]);
   const [page, setPage] = useState(1);
@@ -24,20 +25,23 @@ const AdminCategories = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [actionConfirm, setActionConfirm] = useState({ isOpen: false, category: null, type: null });
+
   const fetchCategories = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/admin/categories?page=${page}&limit=10&search=${searchTerm}&featured=${featuredFilter}`);
-      setData(res.data.data);
-      setTotal(res.data.total);
-      setTotalPages(res.data.totalPages);
-      setStats(res.data.stats);
+      const res = await apiClient.get(`/admin/categories?page=${page}&limit=10&search=${searchTerm}&featured=${featuredFilter}`);
+      setData(res.data.data || []);
+      setTotal(res.data.total || 0);
+      setTotalPages(res.data.totalPages || 1);
+      setStats(res.data.stats || null);
     } catch (err) {
-      toast.error("Failed to load categories");
+      toast.error(getApiErrorMessage(err, "Failed to load categories"));
     }
   };
+
   useEffect(() => {
     fetchCategories();
   }, [page, searchTerm, featuredFilter]);
+
   const handleAction = async (action, row) => {
     try {
       if (action === "delete") {
@@ -55,14 +59,15 @@ const AdminCategories = () => {
       toast.error("Action failed");
     }
   };
+
   const handleFormSubmit = async (formData) => {
     try {
       if (editingCategory) {
-        await axios.put(`http://localhost:5000/api/admin/categories/${editingCategory.id}`, formData);
+        await apiClient.put(`/admin/categories/${editingCategory.id}`, formData);
         setSuccessMessage("Category has been successfully updated.");
         toast.success("Category updated successfully!");
       } else {
-        await axios.post(`http://localhost:5000/api/admin/categories`, formData);
+        await apiClient.post(`/admin/categories`, formData);
         setSuccessMessage("New category has been successfully created.");
         toast.success("Category created successfully!");
       }
@@ -70,25 +75,26 @@ const AdminCategories = () => {
       setIsFormOpen(false);
       setShowSuccess(true);
     } catch (err) {
-      toast.error(err.response?.data?.error || "Operation failed. An error occurred.");
+      toast.error(getApiErrorMessage(err, "Operation failed. An error occurred."));
       throw err;
     }
   };
+
   const handleConfirmAction = async () => {
     if (!actionConfirm.category || !actionConfirm.type) return;
     try {
       if (actionConfirm.type === "delete") {
-        await axios.delete(`http://localhost:5000/api/admin/categories/${actionConfirm.category.id}`);
+        await apiClient.delete(`/admin/categories/${actionConfirm.category.id}`);
         toast.success("Category deleted successfully");
       } else if (actionConfirm.type === "feature") {
-        await axios.patch(`http://localhost:5000/api/admin/categories/${actionConfirm.category.id}/featured`, {
+        await apiClient.patch(`/admin/categories/${actionConfirm.category.id}/featured`, {
           featured: !actionConfirm.category.featured
         });
         toast.success(`Category ${!actionConfirm.category.featured ? "featured" : "unfeatured"} successfully`);
       }
       fetchCategories();
     } catch (err) {
-      toast.error(err.response?.data?.error || "Action failed");
+      toast.error(getApiErrorMessage(err, "Action failed"));
     } finally {
       setActionConfirm({ isOpen: false, category: null, type: null });
     }

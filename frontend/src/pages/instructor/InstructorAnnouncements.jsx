@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Megaphone,
   Search,
@@ -8,13 +9,15 @@ import {
   Trash2,
   Send,
   X,
-  Users
+  Users,
+  ExternalLink
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { instructorApi } from "../../api/instructorApi";
 import { getApiErrorMessage } from "../../api/client";
 
 const InstructorAnnouncements = () => {
+  const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState([]);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -198,7 +201,17 @@ const InstructorAnnouncements = () => {
                   <div>
                     <h3 className="text-lg font-heading font-bold text-heading">{announcement.title}</h3>
                     <div className="text-xs text-caption flex items-center gap-2 mt-1">
-                      <span className="font-semibold text-primary">{announcement.course}</span>
+                      {announcement.courseId && announcement.courseId !== "ALL" ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/instructor/courses/${announcement.courseId}/edit`)}
+                          className="font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          {announcement.course} <ExternalLink className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <span className="font-semibold text-primary">{announcement.course}</span>
+                      )}
                       <span className="w-1 h-1 rounded-full bg-gray-300" />
                       <span>{announcement.date}</span>
                     </div>

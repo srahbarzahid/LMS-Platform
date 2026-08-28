@@ -150,34 +150,173 @@ const adminCertificatesController = {
   // --- ISSUED CERTIFICATES ---
   getIssuedCertificates: async (req, res) => {
     try {
-      res.status(200).json({ success: true, data: issuedCertificates });
+      const certs = await prisma.certificate.findMany({
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          course: { select: { id: true, title: true } }
+        },
+        orderBy: { issuedDate: "desc" }
+      });
+
+      const formatted = certs.map((c) => ({
+        id: c.id,
+        certificateId: c.certificateId,
+        studentId: c.userId,
+        studentName: c.user?.name || "Student",
+        studentEmail: c.user?.email || "",
+        courseId: c.courseId,
+        courseName: c.course?.title || "Course",
+        issueDate: c.issuedDate || c.createdAt,
+        completionDate: c.completionDate || c.createdAt,
+        status: c.status === "ACTIVE" ? "Valid" : c.status === "REVOKED" ? "Revoked" : c.status,
+        revokedAt: c.updatedAt,
+        revokeReason: c.status === "REVOKED" ? "Revoked by administrator" : null
+      }));
+
+      res.status(200).json({ success: true, data: formatted });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
   },
+
+  issueCertificate: async (req, res) => {
+    try {
+      const { userId, courseId } = req.body;
+      if (!userId || !courseId) {
+        return res.status(400).json({ success: false, message: "Student and Course are required." });
+      }
+
+      const existing = await prisma.certificate.findFirst({
+        where: { userId, courseId }
+      });
+      if (existing) {
+        return res.status(400).json({ success: false, message: "A certificate has already been issued for this student and course." });
+      }
+
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true } });
+      const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, title: true } });
+
+      if (!user || !course) {
+        return res.status(404).json({ success: false, message: "Student or Course not found." });
+      }
+
+      const cert = await prisma.certificate.create({
+        data: {
+          certificateId: `CERT-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 900 + 100)}`,
+          userId,
+          courseId,
+          completionDate: new Date(),
+          issuedDate: new Date(),
+          status: "ACTIVE"
+        },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          course: { select: { id: true, title: true } }
+        }
+      });
+
+      // Update student enrollment progress to 100% (Completed)
+      await prisma.enrollment.updateMany({
+        where: { userId, courseId },
+        data: { progress: 100 }
+      });
+
+      // Create or update CourseCompletion
+      await prisma.courseCompletion.upsert({
+        where: { userId_courseId: { userId, courseId } },
+        update: { isCompleted: true, overallProgress: 100, completedAt: new Date() },
+        create: {
+          userId,
+          courseId,
+          isCompleted: true,
+          overallProgress: 100,
+          completedAt: new Date()
+        }
+      });
+
+      res.status(201).json({
+        success: true,
+        data: {
+          id: cert.id,
+          certificateId: cert.certificateId,
+          studentId: cert.userId,
+          studentName: cert.user?.name || "Student",
+          studentEmail: cert.user?.email || "",
+          courseId: cert.courseId,
+          courseName: cert.course?.title || "Course",
+          issueDate: cert.issuedDate,
+          completionDate: cert.completionDate,
+          status: "Valid"
+        },
+        message: "Certificate issued successfully"
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
   getIssuedCertificateById: async (req, res) => {
     try {
-      const cert = issuedCertificates.find((c) => c.id === req.params.id);
-      if (!cert) return res.status(404).json({ success: false, message: "Certificate not found" });
-      res.status(200).json({ success: true, data: cert });
+      const c = await prisma.certificate.findUnique({
+        where: { id: req.params.id },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          course: { select: { id: true, title: true } }
+        }
+      });
+      if (!c) return res.status(404).json({ success: false, message: "Certificate not found" });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          id: c.id,
+          certificateId: c.certificateId,
+          studentId: c.userId,
+          studentName: c.user?.name || "Student",
+          studentEmail: c.user?.email || "",
+          courseId: c.courseId,
+          courseName: c.course?.title || "Course",
+          issueDate: c.issuedDate || c.createdAt,
+          completionDate: c.completionDate || c.createdAt,
+          status: c.status === "ACTIVE" ? "Valid" : c.status === "REVOKED" ? "Revoked" : c.status
+        }
+      });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
   },
+
   revokeCertificate: async (req, res) => {
     try {
       const { reason } = req.body;
       if (!reason) return res.status(400).json({ success: false, message: "Reason is required" });
-      const index = issuedCertificates.findIndex((c) => c.id === req.params.id);
-      if (index === -1) return res.status(404).json({ success: false, message: "Certificate not found" });
-      issuedCertificates[index].status = "Revoked";
-      issuedCertificates[index].revokeReason = reason;
-      issuedCertificates[index].revokedAt = (/* @__PURE__ */ new Date()).toISOString();
-      res.status(200).json({ success: true, data: issuedCertificates[index] });
+
+      const cert = await prisma.certificate.update({
+        where: { id: req.params.id },
+        data: { status: "REVOKED" },
+        include: {
+          user: { select: { name: true, email: true } },
+          course: { select: { title: true } }
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          id: cert.id,
+          certificateId: cert.certificateId,
+          studentName: cert.user?.name || "Student",
+          courseName: cert.course?.title || "Course",
+          status: "Revoked",
+          revokeReason: reason,
+          revokedAt: cert.updatedAt
+        }
+      });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
   },
+
   downloadCertificate: async (req, res) => {
     try {
       res.status(200).json({ success: true, message: "PDF generated for download", downloadUrl: "#" });
@@ -185,21 +324,46 @@ const adminCertificatesController = {
       res.status(500).json({ success: false, message: error.message });
     }
   },
+
   // --- VERIFICATION (Can be accessed publicly usually) ---
   verifyCertificate: async (req, res) => {
     try {
       const { certificateId } = req.params;
-      const cert = issuedCertificates.find((c) => c.certificateId === certificateId || String(c.studentName).toLowerCase() === String(certificateId).toLowerCase());
-      if (!cert) {
+      const c = await prisma.certificate.findFirst({
+        where: {
+          OR: [
+            { certificateId: certificateId },
+            { id: certificateId }
+          ]
+        },
+        include: {
+          user: { select: { name: true, email: true } },
+          course: { select: { title: true } }
+        }
+      });
+
+      if (!c) {
         return res.status(404).json({ success: false, message: "Certificate not found" });
       }
+
       verificationLogs.push({
         id: `vlog_${Date.now()}`,
-        certificateId: cert.certificateId,
-        verifiedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        certificateId: c.certificateId,
+        verifiedAt: new Date().toISOString(),
         ipAddress: req.ip || "127.0.0.1"
       });
-      res.status(200).json({ success: true, data: cert });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          id: c.id,
+          certificateId: c.certificateId,
+          studentName: c.user?.name || "Student",
+          courseName: c.course?.title || "Course",
+          issueDate: c.issuedDate || c.createdAt,
+          status: c.status === "ACTIVE" ? "Valid" : c.status === "REVOKED" ? "Revoked" : c.status
+        }
+      });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }

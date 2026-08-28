@@ -26,30 +26,37 @@ const CartProvider = ({ children }) => {
   }, [cart]);
 
   const addToCart = (item) => {
-    if (!item || !item.id) return;
+    if (!item) return;
+    const targetId = item.id || item.courseId;
+    if (!targetId) return;
+
     setCart((prev) => {
-      if (!prev.some((c) => c.id === item.id)) {
-        toast.success(`"${item.title || "Course"}" added to cart!`);
-        return [...prev, item];
-      } else {
-        toast.error(`"${item.title || "Course"}" is already in your cart!`);
+      const alreadyInCart = prev.some((c) => (c.id || c.courseId) === targetId);
+      const title = item.title || item.courseTitle || "Course";
+
+      if (alreadyInCart) {
+        toast.error(`"${title}" is already in your cart!`, { id: `cart-already-${targetId}` });
         return prev;
       }
+
+      toast.success(`"${title}" added to cart!`, { id: `cart-added-${targetId}` });
+      return [...prev, item];
     });
   };
 
   const removeFromCart = (itemId) => {
     setCart((prev) => {
-      const removedItem = prev.find((c) => c.id === itemId);
+      const removedItem = prev.find((c) => (c.id || c.courseId) === itemId);
       if (removedItem) {
-        toast.success(`"${removedItem.title || "Course"}" removed from cart`);
+        const title = removedItem.title || removedItem.courseTitle || "Course";
+        toast.success(`"${title}" removed from cart`, { id: `cart-removed-${itemId}` });
       }
-      return prev.filter((c) => c.id !== itemId);
+      return prev.filter((c) => (c.id || c.courseId) !== itemId);
     });
   };
 
   const isInCart = (itemId) => {
-    return cart.some((c) => c.id === itemId);
+    return cart.some((c) => (c.id || c.courseId) === itemId);
   };
 
   const clearCart = () => {
