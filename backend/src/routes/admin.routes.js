@@ -24,7 +24,8 @@ import {
   getAnalyticsOffers,
   getAnalyticsActivity,
   getAnalyticsInsights,
-  exportAnalytics
+  exportAnalytics,
+  getSystemLogs
 } from "../controllers/admin/analytics.controller.js";
 import { authenticate, authorize } from "../middlewares/auth.js";
 
@@ -111,6 +112,7 @@ router.get("/announcements/:announcementId", adminAnnouncementsController.getAnn
 router.put("/announcements/:announcementId", adminAnnouncementsController.updateAnnouncement);
 router.delete("/announcements/:announcementId", adminAnnouncementsController.deleteAnnouncement);
 router.put("/announcements/:announcementId/publish", adminAnnouncementsController.togglePublishStatus);
+router.get("/system-logs", getSystemLogs);
 var stdin_default = router;
 export {
   stdin_default as default

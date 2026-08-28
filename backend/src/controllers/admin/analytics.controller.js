@@ -79,6 +79,16 @@ const exportAnalytics = async (req, res) => {
     res.status(500).send("Error generating export");
   }
 };
+
+const getSystemLogs = async (req, res) => {
+  try {
+    const activity = await AnalyticsService.getRecentActivity({});
+    return res.json({ success: true, data: activity });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to fetch system logs" });
+  }
+};
+
 export {
   exportAnalytics,
   getAdminDashboardAnalytics,
@@ -94,5 +104,6 @@ export {
   getAnalyticsRevenue,
   getAnalyticsReviews,
   getAnalyticsSummary,
-  getAnalyticsUsers
+  getAnalyticsUsers,
+  getSystemLogs
 };
