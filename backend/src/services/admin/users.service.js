@@ -1,5 +1,5 @@
 import { prisma } from "../../prisma.js";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const adminUsersService = {
   async getStudents(filters) {
