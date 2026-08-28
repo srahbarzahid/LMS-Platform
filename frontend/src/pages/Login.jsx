@@ -100,25 +100,19 @@ const Login = () => {
             </div>
           </div>
 
-          <form className="space-y-6" onSubmit={handleSubmit} autoComplete="off">
-            {/* Dummy Hidden Trap Inputs to divert aggressive browser credential autofill */}
-            <input type="text" name="fake_username_trap" className="hidden" tabIndex={-1} autoComplete="username" />
-            <input type="password" name="fake_password_trap" className="hidden" tabIndex={-1} autoComplete="current-password" />
-
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-bold text-heading mb-2">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-caption w-5 h-5" />
                 <input
                   type="email"
-                  name="lms_user_login_email_input"
+                  name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-body bg-[#f8f9fa]"
                   placeholder="john@example.com"
-                  autoComplete="new-password"
-                  data-lpignore="true"
-                  data-form-type="other"
+                  autoComplete="username"
                   required
                 />
               </div>
@@ -135,14 +129,12 @@ const Login = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-caption w-5 h-5" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  name="lms_user_login_password_input"
+                  name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-12 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-body bg-[#f8f9fa]"
                   placeholder="••••••••"
-                  autoComplete="new-password"
-                  data-lpignore="true"
-                  data-form-type="other"
+                  autoComplete="current-password"
                   required
                 />
                 <button

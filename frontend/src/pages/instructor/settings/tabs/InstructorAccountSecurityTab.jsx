@@ -181,10 +181,7 @@ const InstructorAccountSecurityTab = () => {
           </div>
         </div>
 
-        <form autoComplete="off" onSubmit={(e) => e.preventDefault()} className="space-y-4 max-w-xl">
-          {/* Dummy hidden inputs to absorb browser autofill */}
-          <input type="text" name="fake_username_trap" className="hidden" tabIndex={-1} autoComplete="username" />
-          <input type="password" name="fake_password_trap" className="hidden" tabIndex={-1} autoComplete="current-password" />
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-4 max-w-xl">
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-caption mb-1.5">Current Password</label>
