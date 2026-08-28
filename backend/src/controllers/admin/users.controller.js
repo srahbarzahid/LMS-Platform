@@ -41,6 +41,15 @@ const adminUsersController = {
       res.status(500).json({ message: "Error fetching student", error });
     }
   },
+  createStudent: async (req, res) => {
+    try {
+      const student = await adminUsersService.createStudent(req.body);
+      res.status(201).json(student);
+    } catch (error) {
+      console.error("Error creating student:", error);
+      res.status(error.status || 500).json({ message: error.message || "Error creating student", error });
+    }
+  },
 
   // Instructors
   getInstructors: async (req, res) => {

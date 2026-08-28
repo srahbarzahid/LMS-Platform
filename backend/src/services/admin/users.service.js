@@ -1,4 +1,5 @@
 import { prisma } from "../../prisma.js";
+import bcrypt from "bcrypt";
 
 const adminUsersService = {
   async getStudents(filters) {
@@ -391,14 +392,63 @@ const adminUsersService = {
     };
   },
 
+  async createStudent(data) {
+    const existing = await prisma.user.findUnique({ where: { email: data.email } });
+    if (existing) {
+      const err = new Error("Email address is already registered");
+      err.status = 400;
+      throw err;
+    }
+
+    const hashedPassword = data.password
+      ? await bcrypt.hash(data.password, 12)
+      : await bcrypt.hash("TempPass123!", 12);
+
+    const newStudent = await prisma.user.create({
+      data: {
+        name: data.name,
+        email: data.email,
+        phone: data.phone || null,
+        password: hashedPassword,
+        role: "STUDENT",
+        isDeactivated: data.status === "Inactive" || data.status === "Blocked",
+        isEmailVerified: true
+      }
+    });
+
+    return {
+      id: newStudent.id,
+      name: newStudent.name,
+      email: newStudent.email,
+      phone: newStudent.phone || "-",
+      enrolledCourses: 0,
+      completedCourses: 0,
+      certificates: 0,
+      status: newStudent.isDeactivated ? "Inactive" : "Active",
+      joinedDate: new Date(newStudent.createdAt).toISOString().split("T")[0]
+    };
+  },
+
   async createInstructor(data) {
+    const existing = await prisma.user.findUnique({ where: { email: data.email } });
+    if (existing) {
+      const err = new Error("Email address is already registered");
+      err.status = 400;
+      throw err;
+    }
+
+    const hashedPassword = data.password
+      ? await bcrypt.hash(data.password, 12)
+      : await bcrypt.hash("TempPass123!", 12);
+
     const newInstructor = await prisma.user.create({
       data: {
         name: data.name,
         email: data.email,
         phone: data.phone || null,
-        password: "$2b$10$defaultPasswordHashKeyForInstructor",
+        password: hashedPassword,
         role: "INSTRUCTOR",
+        isDeactivated: data.status === "Inactive" || data.status === "Blocked",
         isEmailVerified: true
       }
     });
@@ -412,7 +462,7 @@ const adminUsersService = {
       students: 0,
       revenue: 0,
       rating: "5.0",
-      status: "Active",
+      status: newInstructor.isDeactivated ? "Inactive" : "Active",
       joinedDate: new Date(newInstructor.createdAt).toISOString().split("T")[0]
     };
   },

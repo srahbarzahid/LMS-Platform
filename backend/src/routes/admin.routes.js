@@ -47,6 +47,7 @@ router.get("/analytics/activity", getAnalyticsActivity);
 router.get("/analytics/insights", getAnalyticsInsights);
 router.get("/analytics/export", exportAnalytics);
 router.get("/users/students", adminUsersController.getStudents);
+router.post("/users/students", adminUsersController.createStudent);
 router.get("/users/students/:id", adminUsersController.getStudentById);
 router.get("/users/instructors", adminUsersController.getInstructors);
 router.post("/users/instructors", adminUsersController.createInstructor);
