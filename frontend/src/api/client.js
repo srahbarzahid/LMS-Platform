@@ -1,10 +1,21 @@
 import axios from "axios";
 import { getAuthToken, setAuthSession } from "../utils/auth";
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "/api";
+export const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://localhost:5000/api";
+    }
+  }
+  return "https://lms-platform-backend-six.vercel.app/api";
+};
 
 const apiClient = axios.create({
-  baseURL: apiBaseUrl,
+  baseURL: getBaseUrl(),
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -30,7 +41,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const refreshRes = await axios.post(`${apiBaseUrl}/auth/refresh-token`, {}, { withCredentials: true });
+        const refreshRes = await axios.post(`${getBaseUrl()}/auth/refresh-token`, {}, { withCredentials: true });
         const newToken = refreshRes.data?.accessToken || refreshRes.data?.token;
         if (newToken) {
           setAuthSession(newToken);
