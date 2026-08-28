@@ -14,7 +14,7 @@ import {
   X,
   UploadCloud
 } from "lucide-react";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import toast from "react-hot-toast";
 import ConfirmModal from "../../../components/common/ConfirmModal";
 import CertificateTemplateEditor from "../../../components/admin/certificates/CertificateTemplateEditor";
@@ -47,7 +47,7 @@ const AdminCertificateTemplates = () => {
   const fetchTemplates = async () => {
     try {
       setIsLoading(true);
-      const res = await axios.get("http://localhost:5000/api/admin/certificate/templates", { withCredentials: true });
+      const res = await apiClient.get("/admin/certificate/templates");
       if (res.data.success) {
         setTemplates(res.data.data);
       }
@@ -62,7 +62,7 @@ const AdminCertificateTemplates = () => {
   }, []);
   const handleSetDefault = async (id) => {
     try {
-      await axios.put(`http://localhost:5000/api/admin/certificate/templates/${id}/default`, {}, { withCredentials: true });
+      await apiClient.put(`/admin/certificate/templates/${id}/default`);
       fetchTemplates();
     } catch (error) {
       console.error("Failed to set default", error);
@@ -78,7 +78,7 @@ const AdminCertificateTemplates = () => {
   const handleDelete = async () => {
     if (!deleteModal.id) return;
     try {
-      await axios.delete(`http://localhost:5000/api/admin/certificate/templates/${deleteModal.id}`, { withCredentials: true });
+      await apiClient.delete(`/admin/certificate/templates/${deleteModal.id}`);
       toast.success("Template deleted successfully");
       fetchTemplates();
     } catch (error) {
@@ -145,14 +145,14 @@ const AdminCertificateTemplates = () => {
     }
     try {
       if (modalMode === "edit" && editId) {
-        await axios.put(`http://localhost:5000/api/admin/certificate/templates/${editId}`, formData, { withCredentials: true });
+        await apiClient.put(`/admin/certificate/templates/${editId}`, formData);
         toast.success("Updated Successfully", {
           position: "bottom-right",
           style: { background: "#10B981", color: "#ffffff", fontWeight: "600" },
           iconTheme: { primary: "#ffffff", secondary: "#10B981" }
         });
       } else {
-        await axios.post("http://localhost:5000/api/admin/certificate/templates", formData, { withCredentials: true });
+        await apiClient.post("/admin/certificate/templates", formData);
         toast.success("Created Successfully", {
           position: "bottom-right",
           style: { background: "#10B981", color: "#ffffff", fontWeight: "600" },

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, Globe, Mail, ArrowRight, Share2 } from "lucide-react";
 import axios from "axios";
+import apiClient from "../api/client";
 
 // Clean SVG Social Icon Components
 const FacebookIcon = ({ className = "w-4 h-4" }) => (
@@ -41,8 +42,8 @@ const Footer = () => {
   });
 
   useEffect(() => {
-    axios
-      .get("http://localhost:5000/api/public/content")
+    apiClient
+      .get("/public/content")
       .then((res) => {
         if (res.data?.success && res.data?.data?.footer) {
           setFooterData((prev) => ({

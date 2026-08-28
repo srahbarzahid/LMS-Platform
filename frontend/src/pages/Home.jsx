@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
+import apiClient from "../api/client";
 import {
   Code,
   PenTool,
@@ -106,8 +107,8 @@ const Home = () => {
 
   useEffect(() => {
     // 1. Fetch Dynamic Website Content
-    axios
-      .get("http://localhost:5000/api/public/content")
+    apiClient
+      .get("/public/content")
       .then((res) => {
         if (res.data?.success && res.data?.data) {
           setSiteContent((prev) => ({
@@ -119,8 +120,8 @@ const Home = () => {
       .catch((err) => console.log("Using default site content"));
 
     // 2. Fetch Featured Courses
-    axios
-      .get("/api/courses?limit=12")
+    apiClient
+      .get("/courses?limit=12")
       .then((res) => {
         const allCourses = Array.isArray(res.data.data) ? res.data.data : res.data.courses || [];
         const featured = allCourses.filter((c) => c.featured);

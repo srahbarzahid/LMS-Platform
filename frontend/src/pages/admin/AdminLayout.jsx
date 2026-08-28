@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { clearAuthSession } from "../../utils/auth";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import apiClient from "../../api/client";
+import apiClient, { getImageUrl } from "../../api/client";
 import {
   LayoutDashboard,
   UserCog,
@@ -273,11 +273,7 @@ const AdminLayout = () => {
             <Link to="/admin/settings" className="flex items-center gap-3 cursor-pointer group">
               {adminUser.profileImage ? (
                 <img
-                  src={
-                    adminUser.profileImage.startsWith("http") || adminUser.profileImage.startsWith("data:")
-                      ? adminUser.profileImage
-                      : `http://localhost:5000${adminUser.profileImage}`
-                  }
+                  src={getImageUrl(adminUser.profileImage)}
                   alt={adminUser.name || "Super Admin"}
                   className="w-9 h-9 rounded-full object-cover border border-primary/20 shrink-0 group-hover:border-primary transition-all shadow-xs"
                 />

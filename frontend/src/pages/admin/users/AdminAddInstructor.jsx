@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowLeft, Save } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import CustomDropdown from "../../../components/common/CustomDropdown";
 import SuccessModal from "../../../components/common/SuccessModal";
 const AdminAddInstructor = () => {
@@ -15,7 +15,7 @@ const AdminAddInstructor = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/api/admin/users/instructors", {
+      await apiClient.post("/admin/users/instructors", {
         name,
         email,
         phone,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import { Shield, ShieldAlert, ShieldCheck, UserPlus, LogIn } from "lucide-react";
 import { Link } from "react-router-dom";
 import UserStatCards from "../../../components/admin/users/UserStatCards";
@@ -22,7 +22,7 @@ const AdminAdmins = () => {
   }, [page, searchTerm, roleFilter]);
   const fetchAdmins = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/admin/users/admins?page=${page}&limit=10&search=${searchTerm}&role=${roleFilter}`);
+      const res = await apiClient.get(`/admin/users/admins?page=${page}&limit=10&search=${searchTerm}&role=${roleFilter}`);
       setData(res.data.data);
       setTotal(res.data.total);
       setTotalPages(res.data.totalPages);
@@ -40,7 +40,7 @@ const AdminAdmins = () => {
           message: "Are you sure you want to delete the selected administrators? This action cannot be undone.",
           onConfirm: async () => {
             try {
-              await axios.delete(`http://localhost:5000/api/admin/users/${ids[0]}`);
+              await apiClient.delete(`/admin/users/${ids[0]}`);
               toast.success("Administrators deleted successfully");
               fetchAdmins();
             } catch (err) {
@@ -51,11 +51,11 @@ const AdminAdmins = () => {
         });
         return;
       } else if (action === "status") {
-        await axios.patch(`http://localhost:5000/api/admin/users/${ids[0]}/status`, { status: payload?.status });
+        await apiClient.patch(`/admin/users/${ids[0]}/status`, { status: payload?.status });
         toast.success(`Status updated to ${payload?.status}`);
         fetchAdmins();
       } else if (action === "reset") {
-        await axios.post(`http://localhost:5000/api/admin/users/${ids[0]}/reset-password`, { password: payload?.password });
+        await apiClient.post(`/admin/users/${ids[0]}/reset-password`, { password: payload?.password });
         toast.success("Password reset successfully");
       }
     } catch (err) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import toast from "react-hot-toast";
 import {
   Save,
@@ -71,9 +71,7 @@ const AdminWebsiteContent = () => {
   const fetchContent = async () => {
     try {
       setIsLoading(true);
-      const res = await axios.get("http://localhost:5000/api/admin/content", {
-        withCredentials: true,
-      });
+      const res = await apiClient.get("/admin/content");
       if (res.data.success) {
         setContent((prev) => ({
           ...prev,
@@ -91,9 +89,7 @@ const AdminWebsiteContent = () => {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const res = await axios.put("http://localhost:5000/api/admin/content", content, {
-        withCredentials: true,
-      });
+      const res = await apiClient.put("/admin/content", content);
       if (res.data.success) {
         toast.success("Website content updated successfully!");
       }

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ShoppingCart, Trash2, ArrowRight } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import axios from "axios";
+import apiClient from "../api/client";
 import toast from "react-hot-toast";
 
 const StudentCart = () => {
@@ -23,9 +24,7 @@ const StudentCart = () => {
   useEffect(() => {
     const fetchAutomaticOffers = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/student/offers/automatic", {
-          withCredentials: true
-        });
+        const response = await apiClient.get("/student/offers/automatic");
         if (response.data.success) {
           setAutomaticOffers(response.data.data);
         }
@@ -40,11 +39,7 @@ const StudentCart = () => {
     setIsApplying(true);
     setPromoError("");
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/student/offers/validate",
-        { code: promoCode },
-        { withCredentials: true }
-      );
+      const response = await apiClient.post("/student/offers/validate", { code: promoCode });
       if (response.data.success) {
         setAppliedCoupon(response.data.data);
         setPromoCode("");

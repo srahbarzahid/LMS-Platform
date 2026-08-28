@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import toast from "react-hot-toast";
 import { ChevronLeft, Award, Save, AlertCircle } from "lucide-react";
 import CustomDropdown from "../../../components/common/CustomDropdown";
@@ -17,8 +17,8 @@ const AdminCourseCertificates = () => {
   const fetchData = async () => {
     try {
       const [coursesRes, templatesRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/admin/courses?limit=100"),
-        axios.get("http://localhost:5000/api/admin/certificate/templates")
+        apiClient.get("/admin/courses?limit=100"),
+        apiClient.get("/admin/certificate/templates")
       ]);
       setCourses(coursesRes.data.data);
       const templatesData = templatesRes.data.data.map((t) => ({

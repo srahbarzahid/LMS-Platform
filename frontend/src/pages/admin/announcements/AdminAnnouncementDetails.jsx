@@ -8,7 +8,7 @@ import {
   CheckCircle,
   AlertCircle
 } from "lucide-react";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 const AdminAnnouncementDetails = () => {
@@ -22,7 +22,7 @@ const AdminAnnouncementDetails = () => {
   const fetchAnnouncement = async () => {
     try {
       setIsLoading(true);
-      const res = await axios.get(`http://localhost:5000/api/admin/announcements/${id}`, { withCredentials: true });
+      const res = await apiClient.get(`/admin/announcements/${id}`);
       if (res.data.success) {
         setAnnouncement(res.data.data);
       }

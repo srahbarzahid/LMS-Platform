@@ -14,7 +14,7 @@ import {
   IndianRupee,
   ChevronDown
 } from "lucide-react";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import { useNavigate } from "react-router-dom";
 const CustomDropdown = ({ value, options, onChange, placeholder, className = "", disabled = false }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -87,7 +87,7 @@ function AdminOffers() {
   const fetchOffers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5000/api/admin/offers");
+      const response = await apiClient.get("/admin/offers");
       if (response.data.success) {
         setOffers(response.data.data);
       }
@@ -100,7 +100,7 @@ function AdminOffers() {
   const handleToggleStatus = async () => {
     if (!statusConfirm) return;
     try {
-      await axios.put(`http://localhost:5000/api/admin/offers/${statusConfirm.id}/activate`);
+      await apiClient.put(`/admin/offers/${statusConfirm.id}/activate`);
       fetchOffers();
       setStatusConfirm(null);
     } catch (error) {
@@ -109,7 +109,7 @@ function AdminOffers() {
   };
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/admin/offers/${id}`);
+      await apiClient.delete(`/admin/offers/${id}`);
       fetchOffers();
       setDeleteConfirm(null);
     } catch (error) {
@@ -128,7 +128,7 @@ function AdminOffers() {
         usagePerStudent: 1
         // Hardcoded to 1 per student globally
       };
-      await axios.post("http://localhost:5000/api/admin/offers", payload);
+      await apiClient.post("/admin/offers", payload);
       setShowAddModal(false);
       fetchOffers();
       setFormData({

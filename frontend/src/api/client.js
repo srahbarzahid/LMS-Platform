@@ -65,4 +65,14 @@ export const getApiErrorMessage = (error, fallback = "Something went wrong. Plea
   return error?.response?.data?.message || error?.message || fallback;
 };
 
+export const getImageUrl = (path) => {
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) {
+    return path;
+  }
+  const apiBase = getBaseUrl();
+  const origin = apiBase.replace(/\/api\/?$/, "");
+  return `${origin}${path.startsWith("/") ? "" : "/"}${path}`;
+};
+
 export default apiClient;

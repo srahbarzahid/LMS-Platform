@@ -12,7 +12,7 @@ import {
   AlertCircle,
   Clock
 } from "lucide-react";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import CustomDropdown from "../../../components/common/CustomDropdown";
@@ -45,8 +45,8 @@ const AdminAnnouncements = () => {
     try {
       setIsLoading(true);
       const [announcementsRes, summaryRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/admin/announcements", { withCredentials: true }),
-        axios.get("http://localhost:5000/api/admin/announcements/summary", { withCredentials: true })
+        apiClient.get("/admin/announcements"),
+        apiClient.get("/admin/announcements/summary")
       ]);
       if (announcementsRes.data.success) {
         setAnnouncements(announcementsRes.data.data);
@@ -64,9 +64,7 @@ const AdminAnnouncements = () => {
   const handleConfirmTogglePublish = async () => {
     if (!selectedAnnouncement) return;
     try {
-      const res = await axios.put(`http://localhost:5000/api/admin/announcements/${selectedAnnouncement.announcementId}/publish`, {}, {
-        withCredentials: true
-      });
+      const res = await apiClient.put(`/admin/announcements/${selectedAnnouncement.announcementId}/publish`);
       if (res.data.success) {
         toast.success(res.data.message);
         setAnnouncements(announcements.map(
@@ -87,7 +85,7 @@ const AdminAnnouncements = () => {
   const handleDelete = async () => {
     if (!selectedAnnouncement) return;
     try {
-      const res = await axios.delete(`http://localhost:5000/api/admin/announcements/${selectedAnnouncement.announcementId}`, { withCredentials: true });
+      const res = await apiClient.delete(`/admin/announcements/${selectedAnnouncement.announcementId}`);
       if (res.data.success) {
         toast.success("Announcement deleted permanently");
         fetchData();

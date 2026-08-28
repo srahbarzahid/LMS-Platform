@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import {
   ArrowLeft,
   Tag,
@@ -25,7 +25,7 @@ function AdminOfferDetails() {
   const fetchOfferDetails = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/admin/offers/${id}`);
+      const response = await apiClient.get(`/admin/offers/${id}`);
       if (response.data.success) {
         setOffer(response.data.data);
       }

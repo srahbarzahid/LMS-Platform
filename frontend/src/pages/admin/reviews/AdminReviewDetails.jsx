@@ -12,7 +12,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import toast from "react-hot-toast";
 const AdminReviewDetails = () => {
   const { id } = useParams();
@@ -27,7 +27,7 @@ const AdminReviewDetails = () => {
   const fetchReview = async () => {
     try {
       setIsLoading(true);
-      const res = await axios.get(`http://localhost:5000/api/admin/reviews/${id}`, { withCredentials: true });
+      const res = await apiClient.get(`/admin/reviews/${id}`);
       if (res.data.success) {
         setReview(res.data.data);
       }
@@ -42,7 +42,7 @@ const AdminReviewDetails = () => {
   const handleHideUnhide = async () => {
     try {
       const action = review.status === "Published" ? "hide" : "unhide";
-      const res = await axios.put(`http://localhost:5000/api/admin/reviews/${id}/${action}`, {}, { withCredentials: true });
+      const res = await apiClient.put(`/admin/reviews/${id}/${action}`);
       if (res.data.success) {
         toast.success(`Review ${action === "hide" ? "hidden" : "published"} successfully`);
         fetchReview();
@@ -56,7 +56,7 @@ const AdminReviewDetails = () => {
   };
   const handleDelete = async () => {
     try {
-      const res = await axios.delete(`http://localhost:5000/api/admin/reviews/${id}`, { withCredentials: true });
+      const res = await apiClient.delete(`/admin/reviews/${id}`);
       if (res.data.success) {
         toast.success("Review deleted permanently");
         navigate("/admin/reviews");

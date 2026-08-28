@@ -193,7 +193,7 @@ const AdminAnalytics = () => {
       return;
     }
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/analytics/export", { responseType: "blob" });
+      const res = await apiClient.get("/admin/analytics/export", { responseType: "blob" });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;

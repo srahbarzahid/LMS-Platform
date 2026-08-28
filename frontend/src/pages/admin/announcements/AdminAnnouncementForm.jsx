@@ -7,7 +7,7 @@ import {
   CheckCircle,
   Upload
 } from "lucide-react";
-import axios from "axios";
+import apiClient from "../../../api/client";
 import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 import CustomDropdown from "../../../components/common/CustomDropdown";
@@ -39,7 +39,7 @@ const AdminAnnouncementForm = () => {
   const fetchAnnouncement = async () => {
     try {
       setIsFetching(true);
-      const res = await axios.get(`http://localhost:5000/api/admin/announcements/${id}`, { withCredentials: true });
+      const res = await apiClient.get(`/admin/announcements/${id}`);
       if (res.data.success) {
         const data = res.data.data;
         setFormData({
@@ -91,9 +91,9 @@ const AdminAnnouncementForm = () => {
       const payload = { ...formData, publishOption };
       let res;
       if (isEditMode) {
-        res = await axios.put(`http://localhost:5000/api/admin/announcements/${id}`, payload, { withCredentials: true });
+        res = await apiClient.put(`/admin/announcements/${id}`, payload);
       } else {
-        res = await axios.post("http://localhost:5000/api/admin/announcements", payload, { withCredentials: true });
+        res = await apiClient.post("/admin/announcements", payload);
       }
       if (res.data.success) {
         toast.success(`Announcement ${isEditMode ? "updated" : "created"} successfully`);

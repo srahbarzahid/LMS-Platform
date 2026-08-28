@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, CheckCircle, XCircle, ShieldCheck, User, BookOpen, Calendar } from "lucide-react";
-import axios from "axios";
+import apiClient from "../../../api/client";
 const AdminCertificateVerification = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
@@ -13,7 +13,7 @@ const AdminCertificateVerification = () => {
     setResult(null);
     setError(null);
     try {
-      const res = await axios.get(`http://localhost:5000/api/admin/certificate/verify/${searchQuery}`, { withCredentials: true });
+      const res = await apiClient.get(`/admin/certificate/verify/${searchQuery}`);
       if (res.data.success) {
         setResult(res.data.data);
       }
